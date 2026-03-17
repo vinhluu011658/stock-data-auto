@@ -3,6 +3,7 @@ import pandas as pd
 import gspread
 import json
 import os
+from datetime import datetime
 from oauth2client.service_account import ServiceAccountCredentials
 
 # ===== LOAD GOOGLE CREDS =====
@@ -49,7 +50,11 @@ for symbol in symbols:
                 "to chuc nuoc ngoai": safe_calc(item.get("foreign_institutional_buy"), item.get("foreign_institutional_sell")),
                 "nuoc ngoai": safe_calc(item.get("foreign_buy"), item.get("foreign_sell")),
 
-                "trading_date": item.get("trading_date") or item.get("date")
+                "trading_date": datetime.utcfromtimestamp(
+                    int(item.get("trading_date") or item.get("date")) / 1000
+                    if int(item.get("trading_date") or item.get("date")) > 1e12
+                    else int(item.get("trading_date") or item.get("date"))
+                ).strftime("%d/%m/%Y")
             })
             
     except Exception as e:
