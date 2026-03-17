@@ -108,13 +108,13 @@ df = pd.DataFrame(data_all)
 df = df.sort_values(by=["Ma CP", "Date"])
 
 # ===== FORMAT DATE (KHÔNG BỊ ') =====
-df["Date"] = pd.to_datetime(df["Date"]).dt.strftime("%d/%m/%Y")
-
-# ===== CONVERT ALL TO STRING =====
-df = df.astype(str)
+df["Date"] = pd.to_datetime(df["Date"])
 
 # ===== PUSH TO GOOGLE SHEETS =====
 sheet.clear()
-sheet.update([df.columns.tolist()] + df.values.tolist())
+sheet.update(
+    [df.columns.tolist()] + df.values.tolist(),
+    value_input_option="USER_ENTERED"
+)
 
 print("DONE")
