@@ -42,12 +42,12 @@ for symbol in symbols:
             data_all.append({
                 "symbol": symbol,
 
-                "foreign_individual": safe_calc(item.get("foreign_individual_buy"), item.get("foreign_individual_sell")),
-                "proprietary": safe_calc(item.get("proprietary_buy"), item.get("proprietary_sell")),
-                "local_individual": safe_calc(item.get("local_individual_buy"), item.get("local_individual_sell")),
-                "local_institutional": safe_calc(item.get("local_institutional_buy"), item.get("local_institutional_sell")),
-                "foreign_institutional": safe_calc(item.get("foreign_institutional_buy"), item.get("foreign_institutional_sell")),
-                "foreign_total": safe_calc(item.get("foreign_buy"), item.get("foreign_sell")),
+                "ca nhan nuoc ngoai": safe_calc(item.get("foreign_individual_buy"), item.get("foreign_individual_sell")),
+                "tu doanh": safe_calc(item.get("proprietary_buy"), item.get("proprietary_sell")),
+                "ca nhan trong nuoc": safe_calc(item.get("local_individual_buy"), item.get("local_individual_sell")),
+                "to chuc trong nuoc": safe_calc(item.get("local_institutional_buy"), item.get("local_institutional_sell")),
+                "to chuc nuoc ngoai": safe_calc(item.get("foreign_institutional_buy"), item.get("foreign_institutional_sell")),
+                "nuoc ngoai": safe_calc(item.get("foreign_buy"), item.get("foreign_sell")),
 
                 "trading_date": item.get("trading_date") or item.get("date")
             })
