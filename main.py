@@ -73,20 +73,18 @@ def fetch_symbol(symbol):
             timestamp = item.get("trading_date") or item.get("date")
 
             result.append({
-                "symbol": symbol,
-
-                "ca nhan nuoc ngoai": safe_calc(item.get("foreign_individual_buy"), item.get("foreign_individual_sell")),
-                "tu doanh": safe_calc(item.get("proprietary_buy"), item.get("proprietary_sell")),
-                "ca nhan trong nuoc": safe_calc(item.get("local_individual_buy"), item.get("local_individual_sell")),
-                "to chuc trong nuoc": safe_calc(item.get("local_institutional_buy"), item.get("local_institutional_sell")),
-                "to chuc nuoc ngoai": safe_calc(item.get("foreign_institutional_buy"), item.get("foreign_institutional_sell")),
-                "nuoc ngoai": safe_calc(item.get("foreign_buy"), item.get("foreign_sell")),
-
-                "trading_date": (
+              "Date": (
                     datetime.utcfromtimestamp(
                         int(timestamp) / 1000 if int(timestamp) > 1e12 else int(timestamp)
                     ) + timedelta(hours=7)
-                ).strftime("%d/%m/%Y")
+                ).strftime("%d/%m/%Y"),
+                "Ma CP": symbol,
+"nuoc ngoai": safe_calc(item.get("foreign_buy"), item.get("foreign_sell")),
+                "tu doanh": safe_calc(item.get("proprietary_buy"), item.get("proprietary_sell")),
+                "to chuc trong nuoc": safe_calc(item.get("local_institutional_buy"), item.get("local_institutional_sell")),
+                "ca nhan trong nuoc": safe_calc(item.get("local_individual_buy"), item.get("local_individual_sell")),
+                "to chuc nuoc ngoai": safe_calc(item.get("foreign_institutional_buy"), item.get("foreign_institutional_sell")),
+                "ca nhan nuoc ngoai": safe_calc(item.get("foreign_individual_buy"), item.get("foreign_individual_sell"))
             })
 
         time.sleep(0.1)  # tránh bị block
