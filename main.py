@@ -3,7 +3,7 @@ import pandas as pd
 import gspread
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from oauth2client.service_account import ServiceAccountCredentials
 
 # ===== LOAD GOOGLE CREDS =====
