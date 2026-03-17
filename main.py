@@ -72,14 +72,14 @@ def fetch_symbol(symbol):
         for item in data.get("data", []):
             timestamp = item.get("trading_date") or item.get("date")
 
+            dt = datetime.utcfromtimestamp(
+                int(timestamp) / 1000 if int(timestamp) > 1e12 else int(timestamp)
+            ) + timedelta(hours=7)
+
             result.append({
-              "Date": (
-                    datetime.utcfromtimestamp(
-                        int(timestamp) / 1000 if int(timestamp) > 1e12 else int(timestamp)
-                    ) + timedelta(hours=7)
-                ).strftime("%d/%m/%Y"),
+                "Date": dt,  # giữ datetime
                 "Ma CP": symbol,
-"nuoc ngoai": safe_calc(item.get("foreign_buy"), item.get("foreign_sell")),
+                "nuoc ngoai": safe_calc(item.get("foreign_buy"), item.get("foreign_sell")),
                 "tu doanh": safe_calc(item.get("proprietary_buy"), item.get("proprietary_sell")),
                 "to chuc trong nuoc": safe_calc(item.get("local_institutional_buy"), item.get("local_institutional_sell")),
                 "ca nhan trong nuoc": safe_calc(item.get("local_individual_buy"), item.get("local_individual_sell")),
@@ -87,7 +87,7 @@ def fetch_symbol(symbol):
                 "ca nhan nuoc ngoai": safe_calc(item.get("foreign_individual_buy"), item.get("foreign_individual_sell"))
             })
 
-        time.sleep(0.1)  # tránh bị block
+        time.sleep(0.1)
 
     except Exception as e:
         print(f"Lỗi {symbol}: {e}")
@@ -104,11 +104,17 @@ for r in results:
 # ===== DATAFRAME =====
 df = pd.DataFrame(data_all)
 
-# ===== SORT =====
-df = df.sort_values(by=["symbol", "trading_date"])
+# ===== SORT ĐÚNG =====
+df = df.sort_values(by=["Ma CP", "Date"])
+
+# ===== FORMAT DATE (KHÔNG BỊ ') =====
+df["Date"] = pd.to_datetime(df["Date"]).dt.strftime("%d/%m/%Y")
+
+# ===== CONVERT ALL TO STRING =====
+df = df.astype(str)
 
 # ===== PUSH TO GOOGLE SHEETS =====
 sheet.clear()
-sheet.update([df.columns.values.tolist()] + df.values.tolist())
+sheet.update([df.columns.tolist()] + df.values.tolist())
 
 print("DONE")
