@@ -3,6 +3,7 @@ import gspread
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 
 # ===== CREDS =====
 creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
@@ -45,7 +46,7 @@ headers = {
     "Accept": "application/json"
 }
 
-# ===== FETCH =====
+# ===== FETCH 1 MÃ =====
 def get_price(symbol):
     url = f"https://api-finfo.vndirect.com.vn/v4/stock_prices?sort=date&q=code:{symbol}&size=120&page=1"
 
@@ -54,47 +55,71 @@ def get_price(symbol):
 
         if res.status_code != 200:
             print(symbol, "STATUS:", res.status_code)
-            return []
+            return None
 
         if not res.text.strip():
             print(symbol, "EMPTY")
-            return []
+            return None
 
         try:
             json_data = res.json()
         except:
             print(symbol, "NOT JSON:", res.text[:100])
-            return []
+            return None
 
         data = json_data.get("data", [])
 
+        if not data:
+            return None
+
         print(symbol, "rows:", len(data))
 
-        return [
-            [symbol, row["date"], row["adClose"]]
-            for row in data
-        ]
+        return [[symbol, row["date"], row["adClose"]] for row in data]
 
     except Exception as e:
         print(symbol, "ERROR:", e)
-        return []
+        return None
 
-# ===== RUN SONG SONG =====
+# ===== MAIN LOOP SONG SONG + RETRY =====
 all_data = []
+remaining = set(symbols)
+round_num = 0
 
-with ThreadPoolExecutor(max_workers=20) as executor:  # bạn có thể tăng/decrease threads
-    futures = [executor.submit(get_price, s) for s in symbols]
+while remaining:
+    round_num += 1
+    print(f"\n🔁 ROUND {round_num} | còn {len(remaining)} mã")
 
-    for future in as_completed(futures):
-        all_data.extend(future.result())
+    success = set()
+    temp_data = []
 
-print("TOTAL:", len(all_data))
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {executor.submit(get_price, s): s for s in remaining}
 
-# ===== SHEET =====
+        for future in as_completed(futures):
+            symbol = futures[future]
+            result = future.result()
+
+            if result:
+                temp_data.extend(result)
+                success.add(symbol)
+
+    # update remaining mã fail
+    remaining = remaining - success
+    all_data.extend(temp_data)
+
+    print(f"✅ LẤY ĐƯỢC: {len(success)} | ❌ CÒN: {len(remaining)}")
+
+    if remaining:
+        print("⏳ Chờ 2s trước khi retry các mã fail...")
+        time.sleep(2)  # tránh spam API quá nhiều
+
+print("\n🎯 DONE FULL 100% 400 mã")
+
+# ===== PUSH LÊN SHEET =====
 sh = client.open_by_key(SHEET_ID)
 ws = sh.worksheet(SHEET_NAME)
 
-ws.clear()
+ws.batch_clear(["A:C"])
 
 if all_data:
     ws.update("A1", [["symbol", "date", "close"]] + all_data)
@@ -103,4 +128,4 @@ else:
     ws.update("A1", [["NO DATA"]])
     print("NO DATA")
 
-print("DONE")
+print("DONE 🚀")
