@@ -1,0 +1,33 @@
+name: Auto Run Daily
+
+# Cho phép trigger thủ công hoặc từ Zapier
+on:
+  workflow_dispatch:
+
+jobs:
+  run_daily:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout code repo
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Cài đặt Python
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      # Step 3: Cài dependencies (nếu bạn có requirements.txt)
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      # Step 4: Chạy file Python của bạn
+      - name: Run main.py
+        run: python main.py
+
+      # Step 5: Thông báo hoàn tất
+      - name: Done
+        run: echo "Workflow hoàn tất"
