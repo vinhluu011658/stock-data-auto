@@ -46,38 +46,57 @@ headers = {
 
 # ===== FETCH =====
 def get_price(symbol):
-    url = f"https://api-finfo.vndirect.com.vn/v4/stock_prices?sort=date&q=code:{symbol}&size=260&page=1"
+    url = f"https://api-finfo.vndirect.com.vn/v4/stock_prices?sort=date&q=code:{symbol}&size=120&page=1"
 
-    for _ in range(3):  # retry
-        try:
-            res = session.get(url, headers=headers, timeout=10)
+    try:
+        res = session.get(url, headers=headers, timeout=10)
 
-            if res.status_code != 200:
-                continue
+        if res.status_code != 200:
+            return None
 
-            data = res.json().get("data", [])
+        data = res.json().get("data", [])
 
-            return [
-                [symbol, row["date"], row["adClose"]]
-                for row in data
-            ]
+        if not data:
+            return None
 
-        except:
-            continue
+        return [
+            [symbol, row["date"], row["adClose"]]
+            for row in data
+        ]
 
-    print("FAIL:", symbol)
-    return []
+    except:
+        return None
 
-# ===== RUN PARALLEL =====
+
+# ===== MAIN =====
 all_data = []
+remaining = set(symbols)
 
-with ThreadPoolExecutor(max_workers=50) as executor:
-    futures = [executor.submit(get_price, s) for s in symbols]
+round_num = 0
 
-    for future in as_completed(futures):
-        all_data.extend(future.result())
+while remaining:
+    round_num += 1
+    print(f"\n🔁 ROUND {round_num} | còn {len(remaining)} mã")
 
-print("TOTAL ROWS:", len(all_data))
+    success = set()
+
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {executor.submit(get_price, s): s for s in remaining}
+
+        for future in as_completed(futures):
+            symbol = futures[future]
+            result = future.result()
+
+            if result:
+                all_data.extend(result)
+                success.add(symbol)
+
+    # chỉ giữ lại mã fail
+    remaining = remaining - success
+
+    print(f"✅ LẤY ĐƯỢC: {len(success)} | ❌ CÒN: {len(remaining)}")
+
+print("\n🎯 DONE FULL 100%")
 
 # ===== SHEET =====
 sh = client.open_by_key(SHEET_ID)
@@ -88,7 +107,5 @@ ws.batch_clear(["A:C"])
 if all_data:
     ws.update("A1", [["symbol", "date", "close"]] + all_data)
     print("WRITE OK")
-else:
-    print("NO DATA")
 
 print("DONE 🚀")
