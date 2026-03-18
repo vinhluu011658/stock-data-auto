@@ -20,7 +20,7 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
 # ===== OPEN SHEET =====
-sheet = client.open("DATA_STOCK").sheet1
+sheet = client.open("DATA_STOCK").worksheet("Transaction")
 
 # ===== SYMBOL LIST =====
 symbols = """AAA AAM AAT ABR ABS ABT ACB ACC ACG ACL ADG ADP ADS AFX AGG AGR ANT ANV APG APH ASG ASM ASP AST
