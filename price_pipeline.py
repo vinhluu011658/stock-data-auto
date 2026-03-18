@@ -2,6 +2,7 @@ import requests
 import gspread
 import json
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 # ===== LOAD CREDS =====
@@ -12,40 +13,58 @@ client = gspread.service_account_from_dict(creds_dict)
 SHEET_ID = "1VX-dTuwjyQpG_kIke8D2ID1KOMrfTy1Ksu75YJT_C-o"
 SHEET_NAME = "Price"
 
-symbols = ["HPG", "VCB", "SSI"]  # thay 400 mã của bạn
+symbols = """AAA AAM AAT ABR""".split()  # 👈 TEST NGẮN TRƯỚC
 
 # ===== FETCH =====
 def get_price(symbol):
     url = f"https://api-finfo.vndirect.com.vn/v4/stock_prices?sort=date&q=code:{symbol}&size=120&page=1"
-    
-    try:
-        res = requests.get(url, timeout=10)
-        data = res.json()["data"]
-        
-        return [
-            [symbol, row["date"], row["adClose"]]
-            for row in data
-        ]
-    except:
-        return []
 
-# ===== RUN PARALLEL =====
+    for i in range(2):  # retry 2 lần
+        try:
+            res = requests.get(url, timeout=10)
+            data = res.json().get("data", [])
+
+            print(f"{symbol}: {len(data)} rows")
+
+            if len(data) > 0:
+                return [[symbol, r["date"], r["adClose"]] for r in data]
+
+        except Exception as e:
+            print(f"{symbol} ERROR:", e)
+
+        time.sleep(0.5)
+
+    return []
+
+# ===== RUN =====
 all_data = []
 
-with ThreadPoolExecutor(max_workers=20) as executor:
+with ThreadPoolExecutor(max_workers=5) as executor:  # 👈 giảm thread cho ổn định
     results = executor.map(get_price, symbols)
 
 for r in results:
     all_data.extend(r)
 
+print("TOTAL ROWS:", len(all_data))
+
 # ===== SORT =====
 all_data.sort(key=lambda x: (x[0], x[1]))
 
-# ===== WRITE SHEET =====
+# ===== SHEET =====
 sh = client.open_by_key(SHEET_ID)
-ws = sh.worksheet(SHEET_NAME)
+
+try:
+    ws = sh.worksheet(SHEET_NAME)
+except:
+    ws = sh.add_worksheet(title=SHEET_NAME, rows="1000", cols="10")
 
 ws.clear()
-ws.update("A1", [["symbol", "date", "close"]] + all_data)
 
-print("DONE PRICE PIPELINE")
+if len(all_data) > 0:
+    ws.update("A1", [["symbol", "date", "close"]] + all_data)
+    print("WRITE SUCCESS")
+else:
+    ws.update("A1", [["NO DATA"]])
+    print("NO DATA - CHECK API / SYMBOL")
+
+print("DONE")
