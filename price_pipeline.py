@@ -12,6 +12,7 @@ client = gspread.service_account_from_dict(creds_dict)
 SHEET_ID = "1VX-dTuwjyQpG_kIke8D2ID1KOMrfTy1Ksu75YJT_C-o"
 SHEET_NAME = "Price"
 
+# ===== FULL SYMBOL LIST 400 mã =====
 symbols = """AAA AAM AAT ABR ABS ABT ACB ACC ACG ACL ADG ADP ADS AFX AGG AGR ANT ANV APG APH ASG ASM ASP AST
 BAF BCE BCG BCM BFC BHN BIC BID BKG BMC BMI BMP BRC BSI BSR BTP BTT BVH BWE
 C32 C47 CCC CCI CCL CDC CHP CIG CII CKG CLC CLL CLW CMG CMV CMX CNG COM CRC CRE CRV CSM CSV CTD CTF CTG CTI CTR CTS CVT
@@ -52,60 +53,54 @@ def get_price(symbol):
         res = session.get(url, headers=headers, timeout=10)
 
         if res.status_code != 200:
-            return None
+            print(symbol, "STATUS:", res.status_code)
+            return []
 
-        data = res.json().get("data", [])
+        if not res.text.strip():
+            print(symbol, "EMPTY")
+            return []
 
-        if not data:
-            return None
+        try:
+            json_data = res.json()
+        except:
+            print(symbol, "NOT JSON:", res.text[:100])
+            return []
+
+        data = json_data.get("data", [])
+
+        print(symbol, "rows:", len(data))
 
         return [
             [symbol, row["date"], row["adClose"]]
             for row in data
         ]
 
-    except:
-        return None
+    except Exception as e:
+        print(symbol, "ERROR:", e)
+        return []
 
-
-# ===== MAIN =====
+# ===== RUN SONG SONG =====
 all_data = []
-remaining = set(symbols)
 
-round_num = 0
+with ThreadPoolExecutor(max_workers=20) as executor:  # bạn có thể tăng/decrease threads
+    futures = [executor.submit(get_price, s) for s in symbols]
 
-while remaining:
-    round_num += 1
-    print(f"\n🔁 ROUND {round_num} | còn {len(remaining)} mã")
+    for future in as_completed(futures):
+        all_data.extend(future.result())
 
-    success = set()
-
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        futures = {executor.submit(get_price, s): s for s in remaining}
-
-        for future in as_completed(futures):
-            symbol = futures[future]
-            result = future.result()
-
-            if result:
-                all_data.extend(result)
-                success.add(symbol)
-
-    # chỉ giữ lại mã fail
-    remaining = remaining - success
-
-    print(f"✅ LẤY ĐƯỢC: {len(success)} | ❌ CÒN: {len(remaining)}")
-
-print("\n🎯 DONE FULL 100%")
+print("TOTAL:", len(all_data))
 
 # ===== SHEET =====
 sh = client.open_by_key(SHEET_ID)
 ws = sh.worksheet(SHEET_NAME)
 
-ws.batch_clear(["A:C"])
+ws.clear()
 
 if all_data:
     ws.update("A1", [["symbol", "date", "close"]] + all_data)
     print("WRITE OK")
+else:
+    ws.update("A1", [["NO DATA"]])
+    print("NO DATA")
 
-print("DONE 🚀")
+print("DONE")
