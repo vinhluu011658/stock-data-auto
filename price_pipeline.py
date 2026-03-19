@@ -111,7 +111,7 @@ while remaining:
 
     if remaining:
         print("⏳ Chờ 2s trước khi retry các mã fail...")
-        time.sleep(2)  # tránh spam API quá nhiều
+        time.sleep(10)  # tránh spam API quá nhiều
 
 print("\n🎯 DONE FULL 100% 400 mã")
 
