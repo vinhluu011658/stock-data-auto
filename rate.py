@@ -123,7 +123,7 @@ def main():
     print("Đang cập nhật Google Sheet...")
     sheet = connect_gsheet()
 
-    sheet.clear()
+    sheet.batch_clear(["A:D"])
     sheet.update(
         [df.columns.tolist()] + df.values.tolist(),
         value_input_option="USER_ENTERED"
