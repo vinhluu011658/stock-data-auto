@@ -12,12 +12,11 @@ import re
 from oauth2client.service_account import ServiceAccountCredentials
 
 
-# ===== HÀM CLEAN SỐ (QUAN TRỌNG NHẤT) =====
+# ===== CLEAN TEXT (GIỮ DẤU PHẨY) =====
 def clean_number(text):
     if not text:
         return ""
-    # giữ lại số và dấu chấm
-    return re.sub(r"[^\d.]", "", text)
+    return re.sub(r"[^\d,]", "", text)
 
 
 # ===== SCRAPE SBV =====
@@ -33,7 +32,21 @@ def scrape_sbv():
     driver = webdriver.Chrome(options=options)
     driver.get(url)
 
-    WebDriverWait(driver, 15).until(
+    wait = WebDriverWait(driver, 15)
+
+    # ===== LẤY NGÀY =====
+    try:
+        date_element = wait.until(
+            EC.presence_of_element_located((By.XPATH, "//*[contains(text(),'Ngày áp dụng')]"))
+        )
+        date_text = date_element.text
+        match = re.search(r"\d{2}/\d{2}/\d{4}", date_text)
+        apply_date = match.group(0) if match else ""
+    except:
+        apply_date = ""
+
+    # ===== TABLE =====
+    wait.until(
         EC.presence_of_element_located((By.CSS_SELECTOR, "table.bi01-table"))
     )
 
@@ -49,19 +62,14 @@ def scrape_sbv():
             rate_raw = cols[1].text.strip()
             volume_raw = cols[2].text.strip()
 
-            # 🔥 CLEAN DATA
             rate_clean = clean_number(rate_raw)
             volume_clean = clean_number(volume_raw)
 
-            data.append([name, rate_clean, volume_clean])
+            data.append([apply_date, name, rate_clean, volume_clean])
 
     driver.quit()
 
-    df = pd.DataFrame(data, columns=["Ten lai suat", "Rate", "Volume"])
-
-    # convert sang số
-    df["Rate"] = pd.to_numeric(df["Rate"], errors="coerce")
-    df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce")
+    df = pd.DataFrame(data, columns=["Ngay ap dung", "Ten lai suat", "Rate", "Volume"])
 
     return df
 
@@ -96,7 +104,7 @@ def main():
         print("❌ Không có dữ liệu")
         return
 
-    # 🔥 FIX JSON ERROR (NaN → rỗng)
+    # NaN → rỗng
     df = df.fillna("")
 
     print("Đang cập nhật Google Sheet...")
@@ -108,7 +116,7 @@ def main():
         value_input_option="USER_ENTERED"
     )
 
-    print("✅ DONE - Đã cập nhật Google Sheet")
+    print("✅ DONE")
 
 
 if __name__ == "__main__":
