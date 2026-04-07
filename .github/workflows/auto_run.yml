@@ -33,5 +33,11 @@ jobs:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python main.py
 
+      # 👉 sau đó chạy rate.py
+      - name: Run rate.py
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python rate.py
+
       - name: Done
         run: echo "Workflow hoàn tất"
