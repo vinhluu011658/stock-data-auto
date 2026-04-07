@@ -83,7 +83,7 @@ def scrape_sbv():
 
     driver.quit()
 
-    df = pd.DataFrame(data, columns=["Ngay ap dung", "Ten lai suat", "Rate", "Volume"])
+    df = pd.DataFrame(data, columns=["Ngày áp dụng", "Thời hạn", "Lãi suất liên ngân hàng", "Doanh số"])
 
     return df
 
