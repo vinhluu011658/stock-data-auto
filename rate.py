@@ -1,37 +1,45 @@
-import requests
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 
-
 def scrape_sbv():
-    url = "https://sbv.gov.vn/Services/StatisticsService.svc/GetInterbankRates"
+    url = "https://sbv.gov.vn/vi/l%C3%A3i-su%E1%BA%A5t1"
 
-    try:
-        res = requests.get(url, timeout=10)
+    options = Options()
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--start-maximized")
 
-        if res.status_code != 200:
-            print("❌ API STATUS:", res.status_code)
-            return None
+    driver = webdriver.Chrome(options=options)
 
-        data = res.json()
+    driver.get(url)
 
-        if not data:
-            print("❌ NO DATA FROM API")
-            return None
+    # nếu có iframe → bật dòng này
+    # driver.switch_to.frame(0)
 
-        rows = []
-        for item in data:
-            rows.append([
-                item.get("date"),
-                item.get("rate"),
-                item.get("volume")
+    WebDriverWait(driver, 15).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "table.bi01-table"))
+    )
+
+    rows = driver.find_elements(By.CSS_SELECTOR, "table.bi01-table tr")
+
+    data = []
+    for row in rows[1:-1]:
+        cols = row.find_elements(By.TAG_NAME, "td")
+        if len(cols) >= 3:
+            data.append([
+                cols[0].text,
+                cols[1].text.replace(",", "."),
+                cols[2].text
             ])
 
-        df = pd.DataFrame(rows, columns=["date", "rate", "volume"])
+    driver.quit()
 
-        print("✅ API rows:", len(df))
+    df = pd.DataFrame(data, columns=["date", "rate", "volume"])
 
-        return df
+    df["rate"] = pd.to_numeric(df["rate"], errors="coerce")
+    df["volume"] = pd.to_numeric(df["volume"], errors="coerce") / 10
 
-    except Exception as e:
-        print("❌ API ERROR:", e)
-        return None
+    return df
