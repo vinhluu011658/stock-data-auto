@@ -12,11 +12,18 @@ import re
 from oauth2client.service_account import ServiceAccountCredentials
 
 
-# ===== CLEAN TEXT (GIỮ DẤU PHẨY) =====
-def clean_number(text):
+# ===== CLEAN RATE (GIỮ DẤU PHẨY, BỎ (*)) =====
+def clean_rate(text):
     if not text:
         return ""
     return re.sub(r"[^\d,]", "", text)
+
+
+# ===== CLEAN VOLUME (BỎ (*), BỎ ,) =====
+def clean_volume(text):
+    if not text:
+        return ""
+    return re.sub(r"[^\d]", "", text)
 
 
 # ===== SCRAPE SBV =====
@@ -62,10 +69,17 @@ def scrape_sbv():
             rate_raw = cols[1].text.strip()
             volume_raw = cols[2].text.strip()
 
-            rate_clean = clean_number(rate_raw)
-            volume_clean = clean_number(volume_raw)
+            # 🔥 CLEAN
+            rate_clean = clean_rate(rate_raw)
+            volume_clean = clean_volume(volume_raw)
 
-            data.append([apply_date, name, rate_clean, volume_clean])
+            # convert volume và chia 10
+            try:
+                volume_value = float(volume_clean) / 10 if volume_clean else ""
+            except:
+                volume_value = ""
+
+            data.append([apply_date, name, rate_clean, volume_value])
 
     driver.quit()
 
@@ -104,7 +118,6 @@ def main():
         print("❌ Không có dữ liệu")
         return
 
-    # NaN → rỗng
     df = df.fillna("")
 
     print("Đang cập nhật Google Sheet...")
