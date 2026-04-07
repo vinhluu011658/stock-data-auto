@@ -6,15 +6,20 @@ from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 
 import gspread
-from google.oauth2.service_account import Credentials
+import json
+import os
+from oauth2client.service_account import ServiceAccountCredentials
 
 
+# ===== SCRAPE SBV =====
 def scrape_sbv():
     url = "https://sbv.gov.vn/vi/l%C3%A3i-su%E1%BA%A5t1"
 
     options = Options()
+    options.add_argument("--headless")
     options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--headless")  # chạy ngầm (optional)
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
 
     driver = webdriver.Chrome(options=options)
     driver.get(url)
@@ -28,57 +33,52 @@ def scrape_sbv():
     data = []
     for row in rows[1:-1]:
         cols = row.find_elements(By.TAG_NAME, "td")
+
         if len(cols) >= 3:
-            data.append([
-                cols[0].text,
-                cols[1].text.replace(",", "."),
-                cols[2].text
-            ])
+            name = cols[0].text.strip()
+            rate = cols[1].text.replace(",", ".").strip()
+            volume = cols[2].text.replace(",", "").strip()
+
+            data.append([name, rate, volume])
 
     driver.quit()
 
-    df = pd.DataFrame(data, columns=["date", "rate", "volume"])
-    df["rate"] = pd.to_numeric(df["rate"], errors="coerce")
-    df["volume"] = pd.to_numeric(df["volume"], errors="coerce") / 10
+    df = pd.DataFrame(data, columns=["Ten lai suat", "Rate", "Volume"])
+
+    # convert number
+    df["Rate"] = pd.to_numeric(df["Rate"], errors="coerce")
+    df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce")
 
     return df
 
 
-def upload_to_gsheet(df):
-    # scope quyền
-    scope = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
+# ===== GOOGLE CREDS =====
+creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
 
-    creds = Credentials.from_service_account_file(
-        "credentials.json", scopes=scope
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive"
+]
+
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+client = gspread.authorize(creds)
+
+sheet = client.open_by_key(
+    "1VX-dTuwjyQpG_kIke8D2ID1KOMrfTy1Ksu75YJT_C-o"
+).worksheet("Laisuat")
+
+
+# ===== MAIN =====
+df = scrape_sbv()
+
+print(df)
+
+if df.empty:
+    print("NO DATA")
+else:
+    sheet.clear()
+    sheet.update(
+        [df.columns.tolist()] + df.values.tolist(),
+        value_input_option="USER_ENTERED"
     )
-
-    client = gspread.authorize(creds)
-
-    # mở file theo ID
-    spreadsheet = client.open_by_key("1VX-dTuwjyQpG_kIke8D2ID1KOMrfTy1Ksu75YJT_C-o")
-
-    # chọn sheet
-    worksheet = spreadsheet.worksheet("Laisuat")
-
-    # clear dữ liệu cũ
-    worksheet.clear()
-
-    # chuẩn bị data (có header)
-    data = [df.columns.values.tolist()] + df.values.tolist()
-
-    # ghi vào sheet
-    worksheet.update("A1", data)
-
-
-if __name__ == "__main__":
-    df = scrape_sbv()
-    print(df)
-
-    if df.empty:
-        print("NO DATA - không có dữ liệu để ghi")
-    else:
-        upload_to_gsheet(df)
-        print("Đã cập nhật Google Sheet thành công")
+    print("DONE - Updated Google Sheet")
