@@ -8,10 +8,19 @@ import pandas as pd
 import gspread
 import json
 import os
+import re
 from oauth2client.service_account import ServiceAccountCredentials
 
 
-# ===== 1. SCRAPE DATA SBV =====
+# ===== HÀM CLEAN SỐ (QUAN TRỌNG NHẤT) =====
+def clean_number(text):
+    if not text:
+        return ""
+    # giữ lại số và dấu chấm
+    return re.sub(r"[^\d.]", "", text)
+
+
+# ===== SCRAPE SBV =====
 def scrape_sbv():
     url = "https://sbv.gov.vn/vi/l%C3%A3i-su%E1%BA%A5t1"
 
@@ -36,10 +45,15 @@ def scrape_sbv():
 
         if len(cols) >= 3:
             name = cols[0].text.strip()
-            rate = cols[1].text.replace(",", ".").strip()
-            volume = cols[2].text.replace(",", "").strip()
 
-            data.append([name, rate, volume])
+            rate_raw = cols[1].text.strip()
+            volume_raw = cols[2].text.strip()
+
+            # 🔥 CLEAN DATA
+            rate_clean = clean_number(rate_raw)
+            volume_clean = clean_number(volume_raw)
+
+            data.append([name, rate_clean, volume_clean])
 
     driver.quit()
 
@@ -52,7 +66,7 @@ def scrape_sbv():
     return df
 
 
-# ===== 2. KẾT NỐI GOOGLE SHEET =====
+# ===== CONNECT GOOGLE SHEET =====
 def connect_gsheet():
     creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
 
@@ -71,7 +85,7 @@ def connect_gsheet():
     return sheet
 
 
-# ===== 3. MAIN =====
+# ===== MAIN =====
 def main():
     print("Đang lấy dữ liệu SBV...")
     df = scrape_sbv()
@@ -82,7 +96,7 @@ def main():
         print("❌ Không có dữ liệu")
         return
 
-    # ✅ FIX: chuyển NaN thành rỗng
+    # 🔥 FIX JSON ERROR (NaN → rỗng)
     df = df.fillna("")
 
     print("Đang cập nhật Google Sheet...")
