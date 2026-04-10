@@ -7,6 +7,11 @@ import json
 import os
 from oauth2client.service_account import ServiceAccountCredentials
 
+import urllib3
+
+# 🔥 Tắt warning SSL
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 # ================= HNX SCRAPER =================
 def scrape_hnx_bonds():
@@ -21,19 +26,31 @@ def scrape_hnx_bonds():
 
     all_data = []
 
-    for page in range(1, 30):  # auto stop
+    for page in range(1, 30):  # tự dừng khi hết trang
         payload = {
             "searchKeys[]": "",
             "arrCurrentPage[]": str(page),
             "arrNumberRecord[]": "50"
         }
 
-        res = requests.post(url, data=payload, headers=headers)
+        try:
+            res = requests.post(
+                url,
+                data=payload,
+                headers=headers,
+                verify=False,   # 🔥 FIX SSL
+                timeout=30
+            )
+        except Exception as e:
+            print(f"❌ Lỗi request page {page}: {e}")
+            break
+
         soup = BeautifulSoup(res.text, "html.parser")
 
         rows = soup.select("#tbReleaseResult tbody tr")
 
         if not rows:
+            print(f"👉 Hết dữ liệu tại page {page}")
             break
 
         for row in rows:
@@ -50,6 +67,8 @@ def scrape_hnx_bonds():
                 cols[10].replace(",", ""),  # Mệnh giá
                 cols[16]  # Lãi suất (%)
             ])
+
+        print(f"✅ Page {page}: {len(rows)} records")
 
     df = pd.DataFrame(all_data, columns=[
         "Ngày đăng tin",
@@ -102,15 +121,17 @@ def update_sheet(sheet, df):
 
 # ================= MAIN =================
 def main():
-    print("Đang lấy dữ liệu HNX...")
+    print("===== HNX BONDS =====")
+
+    print("🔄 Đang lấy dữ liệu...")
     df = scrape_hnx_bonds()
 
     print(df.head())
 
-    print("Đang kết nối Google Sheet...")
+    print("🔄 Kết nối Google Sheet...")
     sheet = connect_gsheet()
 
-    print("Đang ghi dữ liệu...")
+    print("🔄 Ghi dữ liệu...")
     update_sheet(sheet, df)
 
     print("🚀 DONE")
