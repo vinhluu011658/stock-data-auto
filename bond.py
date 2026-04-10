@@ -9,24 +9,32 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 import urllib3
 
-# 🔥 Tắt warning SSL
+# 🔥 Tắt cảnh báo SSL
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 # ================= HNX SCRAPER =================
 def scrape_hnx_bonds():
     url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/thong-tin-phat-hanh/tim-kiem"
+    home = "https://cbonds.hnx.vn/to-chuc-phat-hanh/thong-tin-phat-hanh"
 
     headers = {
         "User-Agent": "Mozilla/5.0",
+        "Accept": "*/*",
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
         "X-Requested-With": "XMLHttpRequest",
-        "Referer": "https://cbonds.hnx.vn/"
+        "Referer": home
     }
+
+    session = requests.Session()
+
+    # 🔥 BẮT BUỘC: lấy cookie trước
+    print("🔄 Init session...")
+    session.get(home, headers=headers, verify=False)
 
     all_data = []
 
-    for page in range(1, 30):  # tự dừng khi hết trang
+    for page in range(1, 30):
         payload = {
             "searchKeys[]": "",
             "arrCurrentPage[]": str(page),
@@ -34,19 +42,21 @@ def scrape_hnx_bonds():
         }
 
         try:
-            res = requests.post(
+            res = session.post(
                 url,
                 data=payload,
                 headers=headers,
-                verify=False,   # 🔥 FIX SSL
+                verify=False,
                 timeout=30
             )
         except Exception as e:
-            print(f"❌ Lỗi request page {page}: {e}")
+            print(f"❌ Lỗi page {page}: {e}")
             break
 
-        soup = BeautifulSoup(res.text, "html.parser")
+        # DEBUG
+        print(f"Page {page} - response length:", len(res.text))
 
+        soup = BeautifulSoup(res.text, "html.parser")
         rows = soup.select("#tbReleaseResult tbody tr")
 
         if not rows:
@@ -109,7 +119,6 @@ def update_sheet(sheet, df):
 
     df = df.fillna("")
 
-    # Ghi từ cột G
     sheet.update(
         "G1",
         [df.columns.tolist()] + df.values.tolist(),
