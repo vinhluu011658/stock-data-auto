@@ -1,0 +1,29 @@
+name: Run HNX Bond Script
+
+on:
+  schedule:
+    - cron: '10 14 * * *'  # 21h10 VN (UTC+7 = +7h)
+  workflow_dispatch:
+
+jobs:
+  run-bond:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install libraries
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run bond script
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python bond.py
