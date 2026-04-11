@@ -1,8 +1,8 @@
 name: Run HNX Bond Script
 
 on:
-  schedule:
-    - cron: '10 14 * * *'  # 21h10 VN (UTC+7 = +7h)
+  #schedule:
+   # - cron: '10 14 * * *'  # 21h10 VN (UTC+7 = +7h)
   workflow_dispatch:
 
 jobs:
