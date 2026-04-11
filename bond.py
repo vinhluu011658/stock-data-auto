@@ -1,84 +1,78 @@
-import requests
-from bs4 import BeautifulSoup
+import time
 import pandas as pd
+
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 
 import gspread
 import json
 import os
 from oauth2client.service_account import ServiceAccountCredentials
 
-import urllib3
 
-# 🔥 Tắt cảnh báo SSL
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# ================= SELENIUM SETUP =================
+def init_driver():
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+
+    driver = webdriver.Chrome(options=options)
+    return driver
 
 
-# ================= HNX SCRAPER =================
+# ================= SCRAPE HNX =================
 def scrape_hnx_bonds():
-    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/thong-tin-phat-hanh/tim-kiem"
-    home = "https://cbonds.hnx.vn/to-chuc-phat-hanh/thong-tin-phat-hanh"
+    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/thong-tin-phat-hanh"
 
-    headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "*/*",
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "X-Requested-With": "XMLHttpRequest",
-        "Referer": home
-    }
+    driver = init_driver()
+    driver.get(url)
 
-    session = requests.Session()
-
-    # 🔥 BẮT BUỘC: lấy cookie trước
-    print("🔄 Init session...")
-    session.get(home, headers=headers, verify=False)
+    time.sleep(5)  # chờ load JS
 
     all_data = []
+    page = 1
 
-    for page in range(1, 30):
-        payload = {
-            "searchKeys[]": "",
-            "arrCurrentPage[]": str(page),
-            "arrNumberRecord[]": "50"
-        }
+    while True:
+        print(f"🔄 Page {page}")
 
-        try:
-            res = session.post(
-                url,
-                data=payload,
-                headers=headers,
-                verify=False,
-                timeout=30
-            )
-        except Exception as e:
-            print(f"❌ Lỗi page {page}: {e}")
-            break
+        time.sleep(3)
 
-        # DEBUG
-        print(f"Page {page} - response length:", len(res.text))
-
-        soup = BeautifulSoup(res.text, "html.parser")
-        rows = soup.select("#tbReleaseResult tbody tr")
+        rows = driver.find_elements(By.CSS_SELECTOR, "#tbReleaseResult tbody tr")
 
         if not rows:
-            print(f"👉 Hết dữ liệu tại page {page}")
+            print("❌ Không có data")
             break
 
         for row in rows:
-            cols = [td.get_text(strip=True) for td in row.find_all("td")]
+            cols = [td.text.strip() for td in row.find_elements(By.TAG_NAME, "td")]
 
             if len(cols) < 17:
                 continue
 
             all_data.append([
-                cols[1],  # Ngày đăng tin
+                cols[1],  # Ngày đăng
                 cols[2],  # Tên DN
                 cols[3],  # Mã TP
                 cols[9].replace(",", ""),   # Khối lượng
                 cols[10].replace(",", ""),  # Mệnh giá
-                cols[16]  # Lãi suất (%)
+                cols[16]  # Lãi suất
             ])
 
-        print(f"✅ Page {page}: {len(rows)} records")
+        print(f"✅ Lấy {len(rows)} dòng")
+
+        # 👉 tìm nút next
+        try:
+            next_btn = driver.find_element(By.LINK_TEXT, str(page + 1))
+            next_btn.click()
+            page += 1
+        except:
+            print("👉 Hết trang")
+            break
+
+    driver.quit()
 
     df = pd.DataFrame(all_data, columns=[
         "Ngày đăng tin",
@@ -114,7 +108,7 @@ def connect_gsheet():
 # ================= UPDATE =================
 def update_sheet(sheet, df):
     if df.empty:
-        print("❌ Không có dữ liệu HNX")
+        print("❌ Không có dữ liệu")
         return
 
     df = df.fillna("")
@@ -125,14 +119,14 @@ def update_sheet(sheet, df):
         value_input_option="USER_ENTERED"
     )
 
-    print("✅ Đã ghi dữ liệu vào cột G")
+    print("✅ Đã ghi Google Sheet")
 
 
 # ================= MAIN =================
 def main():
     print("===== HNX BONDS =====")
 
-    print("🔄 Đang lấy dữ liệu...")
+    print("🔄 Đang scrape...")
     df = scrape_hnx_bonds()
 
     print(df.head())
