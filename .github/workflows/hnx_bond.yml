@@ -1,8 +1,8 @@
 name: Run HNX Bond Script
 
 on:
-  #schedule:
-   # - cron: '10 14 * * *'  # 21h10 VN (UTC+7 = +7h)
+  # schedule:
+  #   - cron: '10 14 * * *'  # 21h10 VN
   workflow_dispatch:
 
 jobs:
@@ -18,11 +18,21 @@ jobs:
         with:
           python-version: '3.10'
 
+      # 🔥 CÀI CHROME
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      # 🔥 CÀI CHROMEDRIVER
+      - name: Setup ChromeDriver
+        uses: nanasess/setup-chromedriver@v2
+
+      # 🔥 CÀI THƯ VIỆN
       - name: Install libraries
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
 
+      # 🔥 RUN SCRIPT
       - name: Run bond script
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
