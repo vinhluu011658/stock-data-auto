@@ -1,20 +1,67 @@
-import requests
+import time
 import pandas as pd
+
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
 import gspread
 import json
 import os
 from oauth2client.service_account import ServiceAccountCredentials
 
 
-# ================= FETCH HNX (API) =================
-def fetch_hnx_bonds():
-    url = "https://cbonds.hnx.vn/Handler/SearchHandler.ashx"
+# ================= SELENIUM SETUP =================
+def init_driver():
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1920,1080")
 
-    headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "X-Requested-With": "XMLHttpRequest"
-    }
+    driver = webdriver.Chrome(options=options)
+    return driver
+
+
+# ================= HANDLE POPUP =================
+def handle_popup(driver):
+    wait = WebDriverWait(driver, 10)
+
+    try:
+        print("🔐 Xử lý popup...")
+
+        checkbox = wait.until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "input[type='checkbox']"))
+        )
+        driver.execute_script("arguments[0].click();", checkbox)
+
+        agree_btn = wait.until(
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(text(),'Đồng ý')]"))
+        )
+        driver.execute_script("arguments[0].click();", agree_btn)
+
+        wait.until(EC.invisibility_of_element(checkbox))
+
+        print("✅ Đã accept điều khoản")
+
+    except Exception as e:
+        print("⚠️ Không thấy popup hoặc đã xử lý:", e)
+
+
+# ================= SCRAPE HNX =================
+def scrape_hnx_bonds():
+    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/thong-tin-phat-hanh"
+
+    driver = init_driver()
+    wait = WebDriverWait(driver, 20)
+
+    driver.get(url)
+
+    # xử lý popup
+    handle_popup(driver)
 
     all_data = []
     page = 1
@@ -22,49 +69,61 @@ def fetch_hnx_bonds():
     while True:
         print(f"🔄 Page {page}")
 
-        payload = []
-
-        # 👉 page hiện tại (QUAN TRỌNG)
-        payload.append(("arrCurrentPage[]", str(page)))
-
-        # 👉 fill giống request thật
-        for _ in range(11):
-            payload.append(("arrCurrentPage[]", "1"))
-
-        for _ in range(12):
-            payload.append(("arrNumberRecord[]", "10"))
-
         try:
-            response = requests.post(url, data=payload, headers=headers, timeout=30)
-
-            if response.status_code != 200:
-                print("❌ Request lỗi:", response.status_code)
-                break
-
-            data = response.json()
-            rows = data.get("d", [])
+            # ✅ đợi rows xuất hiện
+            rows = wait.until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "#tbReleaseResult tbody tr"))
+            )
 
             if not rows:
-                print("👉 Hết data")
+                print("❌ Không có data")
                 break
 
-            for r in rows:
+            # lưu dòng đầu để detect đổi trang
+            old_first_row = rows[0].text
+
+            for row in rows:
+                cols = [td.text.strip() for td in row.find_elements(By.TAG_NAME, "td")]
+
+                if len(cols) < 17:
+                    continue
+
                 all_data.append([
-                    r.get("IssueDate", ""),
-                    r.get("IssuerName", ""),
-                    r.get("BondCode", ""),
-                    str(r.get("IssueVolume", "")).replace(",", ""),
-                    str(r.get("ParValue", "")).replace(",", ""),
-                    r.get("InterestRate", "")
+                    cols[1],
+                    cols[2],
+                    cols[3],
+                    cols[9].replace(",", ""),
+                    cols[10].replace(",", ""),
+                    cols[16]
                 ])
 
             print(f"✅ Lấy {len(rows)} dòng")
 
-            page += 1
+            # ================= FIX PAGINATION =================
+            try:
+                next_btn = wait.until(
+                    EC.element_to_be_clickable((By.XPATH, f"//a[text()='{page + 1}']"))
+                )
+
+                driver.execute_script("arguments[0].scrollIntoView(true);", next_btn)
+                driver.execute_script("arguments[0].click();", next_btn)
+
+                # 🔥 đợi table đổi dữ liệu thật sự
+                wait.until(lambda d:
+                    d.find_elements(By.CSS_SELECTOR, "#tbReleaseResult tbody tr")[0].text != old_first_row
+                )
+
+                page += 1
+
+            except:
+                print("👉 Hết trang")
+                break
 
         except Exception as e:
-            print("❌ Lỗi:", e)
+            print("❌ Lỗi khi scrape:", e)
             break
+
+    driver.quit()
 
     df = pd.DataFrame(all_data, columns=[
         "Ngày đăng tin",
@@ -105,9 +164,6 @@ def update_sheet(sheet, df):
 
     df = df.fillna("")
 
-    # 👉 clear vùng cũ (tránh data dư)
-    sheet.batch_clear(["G1:Z10000"])
-
     sheet.update(
         "G1",
         [df.columns.tolist()] + df.values.tolist(),
@@ -119,10 +175,9 @@ def update_sheet(sheet, df):
 
 # ================= MAIN =================
 def main():
-    print("===== HNX BONDS (API MODE) =====")
+    print("===== HNX BONDS =====")
 
-    df = fetch_hnx_bonds()
-
+    df = scrape_hnx_bonds()
     print("📊 Tổng dòng:", len(df))
     print(df.head())
 
