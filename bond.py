@@ -116,7 +116,7 @@ def scrape_hnx_bonds_one_page():
         "Kỳ hạn còn lại (ngày)",
         "Khối lượng",
         "Mệnh giá",
-        "Lãi suất (%/năm)",
+        "Lãi suất phát hành (%/năm)",
         "Tình trạng"
     ])
 
