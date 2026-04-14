@@ -1,5 +1,6 @@
 import time
 import pandas as pd
+from datetime import datetime
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -13,7 +14,7 @@ import os
 from oauth2client.service_account import ServiceAccountCredentials
 
 
-# ================= SELENIUM SETUP =================
+# ================= SELENIUM =================
 def init_driver():
     options = Options()
     options.add_argument("--headless=new")
@@ -22,121 +23,82 @@ def init_driver():
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
 
-    driver = webdriver.Chrome(options=options)
-    return driver
+    return webdriver.Chrome(options=options)
 
 
-# ================= HANDLE POPUP =================
+# ================= POPUP =================
 def handle_popup(driver):
     try:
-        # click checkbox nếu có
-        checkboxes = driver.find_elements(By.CSS_SELECTOR, "input[type='checkbox']")
-        for cb in checkboxes:
+        for cb in driver.find_elements(By.CSS_SELECTOR, "input[type='checkbox']"):
             driver.execute_script("arguments[0].click();", cb)
 
-        # click nút đồng ý nếu có
-        buttons = driver.find_elements(By.XPATH, "//button[contains(text(),'Đồng ý')]")
-        for btn in buttons:
+        for btn in driver.find_elements(By.XPATH, "//button[contains(text(),'Đồng ý')]"):
             driver.execute_script("arguments[0].click();", btn)
 
-        # remove overlay nếu còn
         driver.execute_script("document.body.classList.remove('modal-open');")
-
     except:
         pass
 
 
-# ================= SCRAPE HNX =================
-def scrape_hnx_bonds():
+# ================= CLEAN =================
+def clean_number(x):
+    return x.replace(",", "").strip()
+
+
+# ================= SCRAPE (1 PAGE ONLY) =================
+def scrape_hnx_bonds_one_page():
     url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/thong-tin-phat-hanh"
 
     driver = init_driver()
-    wait = WebDriverWait(driver, 20)
+    wait = WebDriverWait(driver, 15)
 
     driver.get(url)
     time.sleep(3)
-
     handle_popup(driver)
 
     all_data = []
-    page = 1
 
-    while True:
-        print(f"🔄 Page {page}")
-
-        try:
-            handle_popup(driver)
-
-            rows = wait.until(
-                EC.presence_of_all_elements_located(
-                    (By.CSS_SELECTOR, "#tbReleaseResult tbody tr")
-                )
+    try:
+        rows = wait.until(
+            EC.presence_of_all_elements_located(
+                (By.CSS_SELECTOR, "#tbReleaseResult tbody tr")
             )
+        )
 
-            if not rows:
-                print("❌ Không có data")
-                break
+        print(f"✅ Lấy {len(rows)} dòng (1 trang)")
 
-            old_first_row = rows[0].text
+        for row in rows:
+            cols = [td.text.strip() for td in row.find_elements(By.TAG_NAME, "td")]
 
-            for row in rows:
-                cols = [td.text.strip() for td in row.find_elements(By.TAG_NAME, "td")]
+            if len(cols) < 17:
+                continue
 
-                if len(cols) < 17:
-                    continue
+            # ===== FIELD =====
+            issue_date = cols[6]
+            maturity_date = cols[7]
 
-                all_data.append([
-                    cols[1],
-                    cols[2],
-                    cols[3],
-                    cols[9].replace(",", ""),
-                    cols[10].replace(",", ""),
-                    cols[16]
-                ])
-
-            print(f"✅ Lấy {len(rows)} dòng")
-
-            # ================= PAGINATION =================
+            # ===== CALC REMAINING DAYS =====
+            remaining_days = ""
             try:
-                next_page = page + 1
+                maturity_dt = datetime.strptime(maturity_date, "%d/%m/%Y")
+                remaining_days = (maturity_dt - datetime.today()).days
+            except:
+                pass
 
-                # tìm nút số trang
-                next_btn = wait.until(
-                    EC.presence_of_element_located((
-                        By.XPATH,
-                        f"//ul[contains(@class,'pagination')]//a[normalize-space()='{next_page}']"
-                    ))
-                )
+            all_data.append([
+                cols[1],  # Ngày đăng
+                cols[2],  # Tên DN
+                cols[3],  # Mã TP
+                issue_date,
+                maturity_date,
+                remaining_days,
+                clean_number(cols[9]),
+                clean_number(cols[10]),
+                cols[16]
+            ])
 
-                # scroll tới nút
-                driver.execute_script(
-                    "arguments[0].scrollIntoView({block:'center'});", next_btn
-                )
-                time.sleep(1)
-
-                # click bằng JS
-                driver.execute_script("arguments[0].click();", next_btn)
-
-                # xử lý popup lại nếu có
-                handle_popup(driver)
-
-                # đợi dữ liệu đổi
-                wait.until(lambda d:
-                    len(d.find_elements(By.CSS_SELECTOR, "#tbReleaseResult tbody tr")) > 0 and
-                    d.find_elements(By.CSS_SELECTOR, "#tbReleaseResult tbody tr")[0].text != old_first_row
-                )
-
-                time.sleep(1.5)
-
-                page += 1
-
-            except Exception as e:
-                print("👉 Hết trang hoặc lỗi pagination:", e)
-                break
-
-        except Exception as e:
-            print("❌ Lỗi scrape:", e)
-            break
+    except Exception as e:
+        print("❌ Lỗi:", e)
 
     driver.quit()
 
@@ -144,9 +106,12 @@ def scrape_hnx_bonds():
         "Ngày đăng tin",
         "Tên DN",
         "Mã TP",
+        "Ngày phát hành",
+        "Ngày đáo hạn",
+        "Kỳ hạn còn lại (ngày)",
         "Khối lượng",
         "Mệnh giá",
-        "Lãi suất (%)"
+        "Lãi suất (%/năm)"
     ])
 
     return df
@@ -190,9 +155,9 @@ def update_sheet(sheet, df):
 
 # ================= MAIN =================
 def main():
-    print("===== HNX BONDS =====")
+    print("===== HNX BONDS (1 PAGE) =====")
 
-    df = scrape_hnx_bonds()
+    df = scrape_hnx_bonds_one_page()
     print("📊 Tổng dòng:", len(df))
     print(df.head())
 
