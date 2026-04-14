@@ -70,13 +70,14 @@ def scrape_hnx_bonds_one_page():
         for row in rows:
             cols = [td.text.strip() for td in row.find_elements(By.TAG_NAME, "td")]
 
-            if len(cols) < 17:
+            if len(cols) < 18:
                 continue
 
             # ===== FIELD =====
-            ky_han = cols[5]           # ⭐ KỲ HẠN
+            ky_han = cols[5]
             issue_date = cols[6]
             maturity_date = cols[7]
+            status = cols[17]   # ⭐ TÌNH TRẠNG
 
             # ===== CALC REMAINING DAYS =====
             remaining_days = ""
@@ -96,7 +97,8 @@ def scrape_hnx_bonds_one_page():
                 remaining_days,
                 clean_number(cols[9]),
                 clean_number(cols[10]),
-                cols[16]
+                cols[16],
+                status
             ])
 
     except Exception as e:
@@ -114,7 +116,8 @@ def scrape_hnx_bonds_one_page():
         "Kỳ hạn còn lại (ngày)",
         "Khối lượng",
         "Mệnh giá",
-        "Lãi suất (%/năm)"
+        "Lãi suất (%/năm)",
+        "Tình trạng"
     ])
 
     return df
