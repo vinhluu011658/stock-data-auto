@@ -45,7 +45,7 @@ def clean_number(x):
     return x.replace(",", "").strip()
 
 
-# ================= SCRAPE (1 PAGE ONLY) =================
+# ================= SCRAPE (1 PAGE) =================
 def scrape_hnx_bonds_one_page():
     url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/thong-tin-phat-hanh"
 
@@ -65,7 +65,7 @@ def scrape_hnx_bonds_one_page():
             )
         )
 
-        print(f"✅ Lấy {len(rows)} dòng (1 trang)")
+        print(f"✅ Lấy {len(rows)} dòng")
 
         for row in rows:
             cols = [td.text.strip() for td in row.find_elements(By.TAG_NAME, "td")]
@@ -74,6 +74,7 @@ def scrape_hnx_bonds_one_page():
                 continue
 
             # ===== FIELD =====
+            ky_han = cols[5]           # ⭐ KỲ HẠN
             issue_date = cols[6]
             maturity_date = cols[7]
 
@@ -89,6 +90,7 @@ def scrape_hnx_bonds_one_page():
                 cols[1],  # Ngày đăng
                 cols[2],  # Tên DN
                 cols[3],  # Mã TP
+                ky_han,
                 issue_date,
                 maturity_date,
                 remaining_days,
@@ -106,6 +108,7 @@ def scrape_hnx_bonds_one_page():
         "Ngày đăng tin",
         "Tên DN",
         "Mã TP",
+        "Kỳ hạn",
         "Ngày phát hành",
         "Ngày đáo hạn",
         "Kỳ hạn còn lại (ngày)",
