@@ -28,27 +28,22 @@ def init_driver():
 
 # ================= HANDLE POPUP =================
 def handle_popup(driver):
-    wait = WebDriverWait(driver, 10)
-
     try:
-        print("🔐 Xử lý popup...")
+        # click checkbox nếu có
+        checkboxes = driver.find_elements(By.CSS_SELECTOR, "input[type='checkbox']")
+        for cb in checkboxes:
+            driver.execute_script("arguments[0].click();", cb)
 
-        checkbox = wait.until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "input[type='checkbox']"))
-        )
-        driver.execute_script("arguments[0].click();", checkbox)
+        # click nút đồng ý nếu có
+        buttons = driver.find_elements(By.XPATH, "//button[contains(text(),'Đồng ý')]")
+        for btn in buttons:
+            driver.execute_script("arguments[0].click();", btn)
 
-        agree_btn = wait.until(
-            EC.element_to_be_clickable((By.XPATH, "//button[contains(text(),'Đồng ý')]"))
-        )
-        driver.execute_script("arguments[0].click();", agree_btn)
+        # remove overlay nếu còn
+        driver.execute_script("document.body.classList.remove('modal-open');")
 
-        wait.until(EC.invisibility_of_element(checkbox))
-
-        print("✅ Đã accept điều khoản")
-
-    except Exception as e:
-        print("⚠️ Không thấy popup hoặc đã xử lý:", e)
+    except:
+        pass
 
 
 # ================= SCRAPE HNX =================
@@ -59,8 +54,8 @@ def scrape_hnx_bonds():
     wait = WebDriverWait(driver, 20)
 
     driver.get(url)
+    time.sleep(3)
 
-    # xử lý popup
     handle_popup(driver)
 
     all_data = []
@@ -70,16 +65,18 @@ def scrape_hnx_bonds():
         print(f"🔄 Page {page}")
 
         try:
-            # ✅ đợi rows xuất hiện
+            handle_popup(driver)
+
             rows = wait.until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "#tbReleaseResult tbody tr"))
+                EC.presence_of_all_elements_located(
+                    (By.CSS_SELECTOR, "#tbReleaseResult tbody tr")
+                )
             )
 
             if not rows:
                 print("❌ Không có data")
                 break
 
-            # lưu dòng đầu để detect đổi trang
             old_first_row = rows[0].text
 
             for row in rows:
@@ -99,28 +96,46 @@ def scrape_hnx_bonds():
 
             print(f"✅ Lấy {len(rows)} dòng")
 
-            # ================= FIX PAGINATION =================
+            # ================= PAGINATION =================
             try:
+                next_page = page + 1
+
+                # tìm nút số trang
                 next_btn = wait.until(
-                    EC.element_to_be_clickable((By.XPATH, f"//a[text()='{page + 1}']"))
+                    EC.presence_of_element_located((
+                        By.XPATH,
+                        f"//ul[contains(@class,'pagination')]//a[normalize-space()='{next_page}']"
+                    ))
                 )
 
-                driver.execute_script("arguments[0].scrollIntoView(true);", next_btn)
+                # scroll tới nút
+                driver.execute_script(
+                    "arguments[0].scrollIntoView({block:'center'});", next_btn
+                )
+                time.sleep(1)
+
+                # click bằng JS
                 driver.execute_script("arguments[0].click();", next_btn)
 
-                # 🔥 đợi table đổi dữ liệu thật sự
+                # xử lý popup lại nếu có
+                handle_popup(driver)
+
+                # đợi dữ liệu đổi
                 wait.until(lambda d:
+                    len(d.find_elements(By.CSS_SELECTOR, "#tbReleaseResult tbody tr")) > 0 and
                     d.find_elements(By.CSS_SELECTOR, "#tbReleaseResult tbody tr")[0].text != old_first_row
                 )
 
+                time.sleep(1.5)
+
                 page += 1
 
-            except:
-                print("👉 Hết trang")
+            except Exception as e:
+                print("👉 Hết trang hoặc lỗi pagination:", e)
                 break
 
         except Exception as e:
-            print("❌ Lỗi khi scrape:", e)
+            print("❌ Lỗi scrape:", e)
             break
 
     driver.quit()
