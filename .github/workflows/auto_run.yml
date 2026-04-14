@@ -39,5 +39,11 @@ jobs:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python rate.py
 
+      # 👉 sau đó chạy bond.py
+      - name: Run bond.py
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python bond.py
+        
       - name: Done
         run: echo "Workflow hoàn tất"
