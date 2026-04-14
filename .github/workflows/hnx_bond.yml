@@ -1,12 +1,13 @@
 name: Run HNX Bond Script
 
 on:
+  schedule:
+    - cron: '0 11 * * *'  # chạy 18h VN
   workflow_dispatch:
 
 jobs:
   run-bond:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
 
     steps:
       - name: Checkout code
