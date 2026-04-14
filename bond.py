@@ -149,7 +149,9 @@ def update_sheet(sheet, df):
         return
 
     df = df.fillna("")
-
+    
+    sheet.batch_clear(["G:Q"])
+    
     sheet.update(
         "G1",
         [df.columns.tolist()] + df.values.tolist(),
