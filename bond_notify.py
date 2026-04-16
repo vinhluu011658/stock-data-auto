@@ -7,8 +7,21 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+import gspread
+import json
+import os
+from oauth2client.service_account import ServiceAccountCredentials
 
-# ================= SELENIUM =================
+
+# ================= CONFIG =================
+URL = "https://cbonds.hnx.vn/to-chuc-phat-hanh/tin-cong-bo-x"
+
+SHEET_ID = "1VX-dTuwjyQpG_kIke8D2ID1KOMrfTy1Ksu75YJT_C-o"
+SHEET_NAME = "Laisuat"
+START_CELL = "G15"
+
+
+# ================= DRIVER =================
 def init_driver():
     options = Options()
     options.add_argument("--headless=new")
@@ -34,14 +47,12 @@ def handle_popup(driver):
         pass
 
 
-# ================= SCRAPE =================
-def scrape_inconstant_one_page():
-    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/tin-cong-bo-x"
-
+# ================= SCRAPE 1 PAGE =================
+def scrape_one_page():
     driver = init_driver()
     wait = WebDriverWait(driver, 15)
 
-    driver.get(url)
+    driver.get(URL)
     time.sleep(3)
     handle_popup(driver)
 
@@ -59,42 +70,30 @@ def scrape_inconstant_one_page():
         for row in rows:
             cols = row.find_elements(By.TAG_NAME, "td")
 
-            if len(cols) < 8:
+            if len(cols) < 7:
                 continue
 
-            # ===== EXTRACT =====
-            ngay_dang = cols[1].text.strip()
+            ngay = cols[1].text.strip()
             ten_dn = cols[2].text.strip()
             ma_tp = cols[3].text.strip()
-
-            # tiêu đề có link
-            try:
-                tieu_de = cols[4].find_element(By.TAG_NAME, "a").text.strip()
-            except:
-                tieu_de = cols[4].text.strip()
-
-            ghi_chu = cols[5].text.strip()
+            tieu_de = cols[4].text.strip()
             tinh_trang = cols[6].text.strip()
 
-            # ===== FILE =====
-            file_id = ""
+            # ===== ARTICLE ID =====
             try:
-                icon = cols[7].find_element(By.TAG_NAME, "i")
-                onclick = icon.get_attribute("onclick")
-
-                # parse ViewFile('31949.0', '3', '')
-                file_id = onclick
+                link = cols[4].find_element(By.TAG_NAME, "a")
+                onclick = link.get_attribute("onclick")
+                article_id = onclick.split("'")[1]
             except:
-                pass
+                article_id = ""
 
             all_data.append([
-                ngay_dang,
+                ngay,
                 ten_dn,
                 ma_tp,
                 tieu_de,
-                ghi_chu,
                 tinh_trang,
-                file_id
+                article_id
             ])
 
     except Exception as e:
@@ -104,19 +103,63 @@ def scrape_inconstant_one_page():
 
     df = pd.DataFrame(all_data, columns=[
         "Ngày đăng tin",
-        "Tên doanh nghiệp",
-        "Mã TP liên quan",
+        "Tên DN",
+        "Mã TP",
         "Tiêu đề",
-        "Ghi chú",
         "Tình trạng",
-        "File (raw onclick)"
+        "Article ID"
     ])
 
     return df
 
 
+# ================= GOOGLE SHEET =================
+def connect_gsheet():
+    creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
+
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+
+    sheet = client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
+
+    return sheet
+
+
+# ================= UPDATE =================
+def update_sheet(sheet, df):
+    if df.empty:
+        print("❌ Không có dữ liệu")
+        return
+
+    df = df.fillna("")
+
+    sheet.update(
+        START_CELL,
+        [df.columns.tolist()] + df.values.tolist(),
+        value_input_option="USER_ENTERED"
+    )
+
+    print("✅ Đã ghi vào G15")
+
+
 # ================= MAIN =================
-if __name__ == "__main__":
-    df = scrape_inconstant_one_page()
+def main():
+    print("===== TIN BẤT THƯỜNG (1 PAGE) =====")
+
+    df = scrape_one_page()
     print("📊 Tổng dòng:", len(df))
     print(df.head())
+
+    sheet = connect_gsheet()
+    update_sheet(sheet, df)
+
+    print("🚀 DONE")
+
+
+if __name__ == "__main__":
+    main()
