@@ -36,7 +36,7 @@ def handle_popup(driver):
 
 # ================= SCRAPE =================
 def scrape_inconstant_one_page():
-    url = "https://cbonds.hnx.vn/cong-bo-thong-tin/bat-thuong"
+    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/tin-cong-bo-x"
 
     driver = init_driver()
     wait = WebDriverWait(driver, 15)
@@ -66,16 +66,24 @@ def scrape_inconstant_one_page():
             ngay_dang = cols[1].text.strip()
             ten_dn = cols[2].text.strip()
             ma_tp = cols[3].text.strip()
-            tieu_de = cols[4].text.strip()
+
+            # tiêu đề có link
+            try:
+                tieu_de = cols[4].find_element(By.TAG_NAME, "a").text.strip()
+            except:
+                tieu_de = cols[4].text.strip()
+
             ghi_chu = cols[5].text.strip()
             tinh_trang = cols[6].text.strip()
 
-            # ===== LINK FILE (nếu có) =====
-            file_link = ""
+            # ===== FILE =====
+            file_id = ""
             try:
                 icon = cols[7].find_element(By.TAG_NAME, "i")
                 onclick = icon.get_attribute("onclick")
-                file_link = onclick
+
+                # parse ViewFile('31949.0', '3', '')
+                file_id = onclick
             except:
                 pass
 
@@ -86,7 +94,7 @@ def scrape_inconstant_one_page():
                 tieu_de,
                 ghi_chu,
                 tinh_trang,
-                file_link
+                file_id
             ])
 
     except Exception as e:
@@ -101,7 +109,7 @@ def scrape_inconstant_one_page():
         "Tiêu đề",
         "Ghi chú",
         "Tình trạng",
-        "File đính kèm"
+        "File (raw onclick)"
     ])
 
     return df
