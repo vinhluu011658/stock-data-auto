@@ -30,42 +30,38 @@ def init_driver():
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
 
+    # chống detect bot
+    options.add_argument("--disable-blink-features=AutomationControlled")
+
     return webdriver.Chrome(options=options)
 
 
-# ================= POPUP =================
-def handle_popup(driver):
-    try:
-        for cb in driver.find_elements(By.CSS_SELECTOR, "input[type='checkbox']"):
-            driver.execute_script("arguments[0].click();", cb)
-
-        for btn in driver.find_elements(By.XPATH, "//button[contains(text(),'Đồng ý')]"):
-            driver.execute_script("arguments[0].click();", btn)
-
-        driver.execute_script("document.body.classList.remove('modal-open');")
-    except:
-        pass
-
-
-# ================= SCRAPE 1 PAGE =================
+# ================= SCRAPE =================
 def scrape_one_page():
     driver = init_driver()
-    wait = WebDriverWait(driver, 15)
+    wait = WebDriverWait(driver, 20)
 
     driver.get(URL)
-    time.sleep(3)
-    handle_popup(driver)
+    time.sleep(2)
+
+    # ===== FORCE REMOVE POPUP =====
+    driver.execute_script("""
+    document.body.classList.remove('modal-open');
+    let b = document.querySelector('.modal-backdrop');
+    if (b) b.remove();
+    """)
 
     all_data = []
 
     try:
+        # ===== ĐỢI DATA LOAD =====
         rows = wait.until(
             EC.presence_of_all_elements_located(
                 (By.CSS_SELECTOR, "#tbInconstant tbody tr")
             )
         )
 
-        print(f"✅ Lấy {len(rows)} dòng")
+        print("✅ Số dòng:", len(rows))
 
         for row in rows:
             cols = row.find_elements(By.TAG_NAME, "td")
@@ -98,6 +94,7 @@ def scrape_one_page():
 
     except Exception as e:
         print("❌ Lỗi:", e)
+        print(driver.page_source[:1000])  # debug nếu fail
 
     driver.quit()
 
@@ -126,7 +123,6 @@ def connect_gsheet():
     client = gspread.authorize(creds)
 
     sheet = client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
-
     return sheet
 
 
@@ -144,7 +140,7 @@ def update_sheet(sheet, df):
         value_input_option="USER_ENTERED"
     )
 
-    print("✅ Đã ghi vào G15")
+    print("✅ Đã ghi Google Sheet (G15)")
 
 
 # ================= MAIN =================
