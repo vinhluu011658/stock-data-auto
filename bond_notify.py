@@ -1,5 +1,6 @@
 import time
 import pandas as pd
+from datetime import datetime
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -13,15 +14,7 @@ import os
 from oauth2client.service_account import ServiceAccountCredentials
 
 
-# ================= CONFIG =================
-URL = "https://cbonds.hnx.vn/to-chuc-phat-hanh/tin-cong-bo-x"
-
-SHEET_ID = "1VX-dTuwjyQpG_kIke8D2ID1KOMrfTy1Ksu75YJT_C-o"
-SHEET_NAME = "Laisuat"
-START_CELL = "G15"
-
-
-# ================= DRIVER =================
+# ================= SELENIUM =================
 def init_driver():
     options = Options()
     options.add_argument("--headless=new")
@@ -30,38 +23,52 @@ def init_driver():
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
 
-    # chống detect bot
-    options.add_argument("--disable-blink-features=AutomationControlled")
-
     return webdriver.Chrome(options=options)
 
 
+# ================= POPUP =================
+def handle_popup(driver):
+    try:
+        for cb in driver.find_elements(By.CSS_SELECTOR, "input[type='checkbox']"):
+            driver.execute_script("arguments[0].click();", cb)
+
+        for btn in driver.find_elements(By.XPATH, "//button[contains(text(),'Đồng ý')]"):
+            driver.execute_script("arguments[0].click();", btn)
+
+        driver.execute_script("document.body.classList.remove('modal-open');")
+    except:
+        pass
+
+
 # ================= SCRAPE =================
-def scrape_one_page():
+def scrape_hnx_inconstant():
+    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/tin-cong-bo-x"
+
     driver = init_driver()
-    wait = WebDriverWait(driver, 20)
+    wait = WebDriverWait(driver, 15)
 
-    driver.get(URL)
-    time.sleep(2)
-
-    # ===== FORCE REMOVE POPUP =====
-    driver.execute_script("""
-    document.body.classList.remove('modal-open');
-    let b = document.querySelector('.modal-backdrop');
-    if (b) b.remove();
-    """)
+    driver.get(url)
+    time.sleep(3)
+    handle_popup(driver)
 
     all_data = []
 
     try:
-        # ===== ĐỢI DATA LOAD =====
-        rows = wait.until(
+        # đợi table load
+        wait.until(
+            EC.presence_of_element_located((By.ID, "tbInconstant"))
+        )
+
+        # đợi có row
+        wait.until(
             EC.presence_of_all_elements_located(
                 (By.CSS_SELECTOR, "#tbInconstant tbody tr")
             )
         )
 
-        print("✅ Số dòng:", len(rows))
+        rows = driver.find_elements(By.CSS_SELECTOR, "#tbInconstant tbody tr")
+
+        print(f"✅ Lấy {len(rows)} dòng")
 
         for row in rows:
             cols = row.find_elements(By.TAG_NAME, "td")
@@ -69,32 +76,22 @@ def scrape_one_page():
             if len(cols) < 7:
                 continue
 
-            ngay = cols[1].text.strip()
+            ngay_dang = cols[1].text.strip()
             ten_dn = cols[2].text.strip()
             ma_tp = cols[3].text.strip()
             tieu_de = cols[4].text.strip()
             tinh_trang = cols[6].text.strip()
 
-            # ===== ARTICLE ID =====
-            try:
-                link = cols[4].find_element(By.TAG_NAME, "a")
-                onclick = link.get_attribute("onclick")
-                article_id = onclick.split("'")[1]
-            except:
-                article_id = ""
-
             all_data.append([
-                ngay,
+                ngay_dang,
                 ten_dn,
                 ma_tp,
                 tieu_de,
-                tinh_trang,
-                article_id
+                tinh_trang
             ])
 
     except Exception as e:
         print("❌ Lỗi:", e)
-        print(driver.page_source[:1000])  # debug nếu fail
 
     driver.quit()
 
@@ -103,8 +100,7 @@ def scrape_one_page():
         "Tên DN",
         "Mã TP",
         "Tiêu đề",
-        "Tình trạng",
-        "Article ID"
+        "Tình trạng"
     ])
 
     return df
@@ -122,7 +118,10 @@ def connect_gsheet():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
 
-    sheet = client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
+    sheet = client.open_by_key(
+        "1VX-dTuwjyQpG_kIke8D2ID1KOMrfTy1Ksu75YJT_C-o"
+    ).worksheet("Laisuat")
+
     return sheet
 
 
@@ -134,20 +133,23 @@ def update_sheet(sheet, df):
 
     df = df.fillna("")
 
+    # clear vùng G:K
+    sheet.batch_clear(["G:K"])
+
     sheet.update(
-        START_CELL,
+        "G1",
         [df.columns.tolist()] + df.values.tolist(),
         value_input_option="USER_ENTERED"
     )
 
-    print("✅ Đã ghi Google Sheet (G15)")
+    print("✅ Đã ghi Google Sheet")
 
 
 # ================= MAIN =================
 def main():
-    print("===== TIN BẤT THƯỜNG (1 PAGE) =====")
+    print("===== TIN BẤT THƯỜNG =====")
 
-    df = scrape_one_page()
+    df = scrape_hnx_inconstant()
     print("📊 Tổng dòng:", len(df))
     print(df.head())
 
