@@ -41,7 +41,7 @@ def handle_popup(driver):
 
 # ================= SCRAPE =================
 def scrape_hnx_inconstant():
-    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/tin-cong-bo-x"
+    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/tin-cong-bo"
 
     driver = init_driver()
     wait = WebDriverWait(driver, 20)
