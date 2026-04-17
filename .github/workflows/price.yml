@@ -2,7 +2,7 @@ name: Price Pipeline
 
 on:
   schedule:
-    - cron: '20 10 * * *'  # chạy 17h20 VN (lệch pipeline cũ 10p)
+    - cron: '10 11 * * *'  # chạy 18h10 VN (lệch pipeline cũ 10p)
   workflow_dispatch:
 
 jobs:
