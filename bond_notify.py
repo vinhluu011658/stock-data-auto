@@ -133,12 +133,12 @@ def update_sheet(sheet, df):
 
     df = df.fillna("")
 
-    # clear vùng G15 → K (dữ liệu cũ)
-    sheet.batch_clear(["G15:K500"])
+    # clear vùng T1 → K (dữ liệu cũ)
+    sheet.batch_clear(["t1:x120"])
 
-    # ghi từ G15
+    # ghi từ t1
     sheet.update(
-        "G15",
+        "t1",
         [df.columns.tolist()] + df.values.tolist(),
         value_input_option="USER_ENTERED"
     )
