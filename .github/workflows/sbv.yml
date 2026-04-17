@@ -2,7 +2,7 @@ name: Run SBV Rate Script
 
 on:
   schedule:
-    - cron: '10 14 * * *'  # 16h VN
+    - cron: '0 10 * * *'  # 16h VN
   workflow_dispatch:
 
 jobs:
