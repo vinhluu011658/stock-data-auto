@@ -45,9 +45,9 @@ def clean_number(x):
     return x.replace(",", "").strip()
 
 
-# ================= SCRAPE (1 PAGE) =================
-def scrape_hnx_bonds_one_page():
-    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/thong-tin-phat-hanh"
+# ================= SCRAPE =================
+def scrape_hnx_repurchase():
+    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/thong-tin-phat-hanh"  # giữ nguyên theo bạn
 
     driver = init_driver()
     wait = WebDriverWait(driver, 15)
@@ -61,7 +61,7 @@ def scrape_hnx_bonds_one_page():
     try:
         rows = wait.until(
             EC.presence_of_all_elements_located(
-                (By.CSS_SELECTOR, "#tbReleaseResult tbody tr")
+                (By.CSS_SELECTOR, "#tbRepurchaseResult tbody tr")
             )
         )
 
@@ -73,32 +73,23 @@ def scrape_hnx_bonds_one_page():
             if len(cols) < 18:
                 continue
 
-            # ===== FIELD =====
-            ky_han = cols[5]
-            issue_date = cols[6]
-            maturity_date = cols[7]
-            status = cols[17]   # ⭐ TÌNH TRẠNG
-
-            # ===== CALC REMAINING DAYS =====
-            remaining_days = ""
-            try:
-                maturity_dt = datetime.strptime(maturity_date, "%d/%m/%Y")
-                remaining_days = (maturity_dt - datetime.today()).days
-            except:
-                pass
-
             all_data.append([
-                cols[1],  # Ngày đăng
-                cols[2],  # Tên DN
-                cols[3],  # Mã TP
-                ky_han,
-                issue_date,
-                maturity_date,
-                remaining_days,
-                clean_number(cols[9]),
-                clean_number(cols[10]),
-                cols[16],
-                status
+                cols[1],   # Ngày đăng tin
+                cols[2],   # Tên DN
+                cols[3],   # Mã TP
+                clean_number(cols[4]),   # Mệnh giá
+                cols[5],   # Kỳ hạn
+                cols[6],   # Ngày phát hành
+                cols[7],   # Ngày đáo hạn
+                clean_number(cols[8]),   # Giá trị phát hành
+                clean_number(cols[9]),   # Giá trị lưu hành
+                clean_number(cols[10]),  # Giá trị mua lại
+                cols[11],  # Số lượng mua lại
+                clean_number(cols[12]),  # Giá trị còn lại
+                cols[13],  # Số lượng còn lại
+                cols[14],  # Ngày mua lại
+                cols[15],  # Tình trạng
+                cols[16],  # Ghi chú
             ])
 
     except Exception as e:
@@ -110,14 +101,19 @@ def scrape_hnx_bonds_one_page():
         "Ngày đăng tin",
         "Tên DN",
         "Mã TP",
+        "Mệnh giá",
         "Kỳ hạn",
         "Ngày phát hành",
         "Ngày đáo hạn",
-        "Kỳ hạn còn lại (ngày)",
-        "Khối lượng",
-        "Mệnh giá",
-        "Lãi suất phát hành (%/năm)",
-        "Tình trạng"
+        "Giá trị phát hành",
+        "Giá trị lưu hành",
+        "Giá trị mua lại",
+        "Số lượng mua lại",
+        "Giá trị còn lại",
+        "Số lượng còn lại",
+        "Ngày mua lại",
+        "Tình trạng",
+        "Ghi chú"
     ])
 
     return df
@@ -149,14 +145,13 @@ def update_sheet(sheet, df):
         return
 
     df = df.fillna("")
-    
-    # ⭐ ĐỔI . → , ở cột lãi suất
-    df["Lãi suất phát hành (%/năm)"] = df["Lãi suất phát hành (%/năm)"].astype(str).str.replace(".", ",", regex=False)
-    
-    sheet.batch_clear(["G:Q"])
-    
+
+    # chỉ xóa từ G15 trở xuống
+    sheet.batch_clear(["G15:Q1000"])
+
+    # ghi từ G15
     sheet.update(
-        "G1",
+        "G15",
         [df.columns.tolist()] + df.values.tolist(),
         value_input_option="USER_ENTERED"
     )
@@ -166,9 +161,9 @@ def update_sheet(sheet, df):
 
 # ================= MAIN =================
 def main():
-    print("===== HNX BONDS (1 PAGE) =====")
+    print("===== HNX REPURCHASE =====")
 
-    df = scrape_hnx_bonds_one_page()
+    df = scrape_hnx_repurchase()
     print("📊 Tổng dòng:", len(df))
     print(df.head())
 
