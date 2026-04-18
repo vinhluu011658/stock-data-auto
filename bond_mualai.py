@@ -71,7 +71,7 @@ def scrape_hnx_repurchase():
             pass
 
         # 🔥 loop 60 trang
-        for page in range(1, 3):
+        for page in range(1, 61):
 
             print(f"🚀 Đang lấy trang {page}")
 
