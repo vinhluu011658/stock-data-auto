@@ -47,7 +47,7 @@ def clean_number(x):
 
 # ================= SCRAPE =================
 def scrape_hnx_repurchase():
-    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh"  
+    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/thong-tin-phat-hanh"  # giữ nguyên theo bạn
 
     driver = init_driver()
     wait = WebDriverWait(driver, 15)
@@ -70,7 +70,6 @@ def scrape_hnx_repurchase():
         for row in rows:
             cols = [td.text.strip() for td in row.find_elements(By.TAG_NAME, "td")]
 
-            # vẫn giữ logic cũ: phải đủ 18 cột
             if len(cols) < 18:
                 continue
 
@@ -90,6 +89,7 @@ def scrape_hnx_repurchase():
                 cols[13],  # Số lượng còn lại
                 cols[14],  # Ngày mua lại
                 cols[15],  # Tình trạng
+                cols[16],  # Ghi chú
             ])
 
     except Exception as e:
@@ -112,7 +112,8 @@ def scrape_hnx_repurchase():
         "Giá trị còn lại",
         "Số lượng còn lại",
         "Ngày mua lại",
-        "Tình trạng"
+        "Tình trạng",
+        "Ghi chú"
     ])
 
     return df
@@ -145,11 +146,13 @@ def update_sheet(sheet, df):
 
     df = df.fillna("")
 
+    # chỉ xóa từ G15 trở xuống
     sheet.batch_clear(["G15:Q1000"])
 
+    # ghi từ G15
     sheet.update(
-        range_name="G15",
-        values=[df.columns.tolist()] + df.values.tolist(),
+        "G15",
+        [df.columns.tolist()] + df.values.tolist(),
         value_input_option="USER_ENTERED"
     )
 
