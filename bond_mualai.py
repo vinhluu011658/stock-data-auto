@@ -70,7 +70,7 @@ def scrape_hnx_repurchase():
         for row in rows:
             cols = [td.text.strip() for td in row.find_elements(By.TAG_NAME, "td")]
 
-            if len(cols) < 18:
+            if len(cols) < 16:
                 continue
 
             all_data.append([
@@ -88,8 +88,6 @@ def scrape_hnx_repurchase():
                 clean_number(cols[12]),  # Giá trị còn lại
                 cols[13],  # Số lượng còn lại
                 cols[14],  # Ngày mua lại
-                cols[15],  # Tình trạng
-                cols[16],  # Ghi chú
             ])
 
     except Exception as e:
@@ -111,9 +109,7 @@ def scrape_hnx_repurchase():
         "Số lượng mua lại",
         "Giá trị còn lại",
         "Số lượng còn lại",
-        "Ngày mua lại",
-        "Tình trạng",
-        "Ghi chú"
+        "Ngày mua lại"
     ])
 
     return df
