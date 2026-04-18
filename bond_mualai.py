@@ -68,8 +68,7 @@ def scrape_hnx_repurchase():
         print(f"✅ Lấy {len(rows)} dòng")
 
         for row in rows:
-            cols = [td.text.strip() for td in row.find_elements(By.TAG_NAME, "td")]
-
+            cols = [td.get_attribute("innerText").strip() for td in row.find_elements(By.TAG_NAME, "td")]
             if len(cols) < 16:
                 continue
 
