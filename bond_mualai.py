@@ -45,65 +45,51 @@ def clean_number(x):
     return x.replace(",", "").strip()
 
 
-# ================= GET TEXT FIX =================
-def get_text(driver, element):
-    return driver.execute_script("return arguments[0].innerText;", element).strip()
-
-
 # ================= SCRAPE =================
 def scrape_hnx_repurchase():
-    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/thong-tin-mua-lai"  # ⭐ nên dùng đúng URL này
+    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh"  
 
     driver = init_driver()
-    wait = WebDriverWait(driver, 20)
+    wait = WebDriverWait(driver, 15)
 
     driver.get(url)
+    time.sleep(3)
     handle_popup(driver)
 
     all_data = []
 
     try:
-        # ✅ chờ table load thật sự
-        wait.until(EC.presence_of_element_located((By.ID, "tbRepurchaseResult")))
-        wait.until(EC.presence_of_all_elements_located(
-            (By.CSS_SELECTOR, "#tbRepurchaseResult tbody tr")
-        ))
-
-        rows = driver.find_elements(By.CSS_SELECTOR, "#tbRepurchaseResult tbody tr")
+        rows = wait.until(
+            EC.presence_of_all_elements_located(
+                (By.CSS_SELECTOR, "#tbRepurchaseResult tbody tr")
+            )
+        )
 
         print(f"✅ Lấy {len(rows)} dòng")
 
         for row in rows:
-            tds = row.find_elements(By.TAG_NAME, "td")
-            cols = [get_text(driver, td) for td in tds]
+            cols = [td.text.strip() for td in row.find_elements(By.TAG_NAME, "td")]
 
-            # debug nếu cần
-            # print(cols)
-
-            if len(cols) < 16:
-                continue
-
-            # bỏ dòng rỗng
-            if all(c == "" for c in cols):
+            # vẫn giữ logic cũ: phải đủ 18 cột
+            if len(cols) < 18:
                 continue
 
             all_data.append([
-                cols[1],
-                cols[2],
-                cols[3],
-                clean_number(cols[4]),
-                cols[5],
-                cols[6],
-                cols[7],
-                clean_number(cols[8]),
-                clean_number(cols[9]),
-                clean_number(cols[10]),
-                cols[11],
-                clean_number(cols[12]),
-                cols[13],
-                cols[14],
-                cols[15],
-                cols[16] if len(cols) > 16 else ""
+                cols[1],   # Ngày đăng tin
+                cols[2],   # Tên DN
+                cols[3],   # Mã TP
+                clean_number(cols[4]),   # Mệnh giá
+                cols[5],   # Kỳ hạn
+                cols[6],   # Ngày phát hành
+                cols[7],   # Ngày đáo hạn
+                clean_number(cols[8]),   # Giá trị phát hành
+                clean_number(cols[9]),   # Giá trị lưu hành
+                clean_number(cols[10]),  # Giá trị mua lại
+                cols[11],  # Số lượng mua lại
+                clean_number(cols[12]),  # Giá trị còn lại
+                cols[13],  # Số lượng còn lại
+                cols[14],  # Ngày mua lại
+                cols[15],  # Tình trạng
             ])
 
     except Exception as e:
@@ -126,8 +112,7 @@ def scrape_hnx_repurchase():
         "Giá trị còn lại",
         "Số lượng còn lại",
         "Ngày mua lại",
-        "Tình trạng",
-        "Ghi chú"
+        "Tình trạng"
     ])
 
     return df
@@ -160,10 +145,8 @@ def update_sheet(sheet, df):
 
     df = df.fillna("")
 
-    # chỉ clear từ G15 trở xuống
     sheet.batch_clear(["G15:Q1000"])
 
-    # ghi từ G15
     sheet.update(
         range_name="G15",
         values=[df.columns.tolist()] + df.values.tolist(),
