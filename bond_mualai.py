@@ -47,7 +47,7 @@ def clean_number(x):
 
 # ================= SCRAPE =================
 def scrape_hnx_repurchase():
-    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/thong-tin-phat-hanh"  # giữ nguyên theo bạn
+    url = "https://cbonds.hnx.vn/to-chuc-phat-hanh/thong-tin-phat-hanh"
 
     driver = init_driver()
     wait = WebDriverWait(driver, 15)
@@ -59,6 +59,21 @@ def scrape_hnx_repurchase():
     all_data = []
 
     try:
+        # ✅ chọn 100 dòng (giữ style của bạn)
+        try:
+            select_box = driver.find_element(By.ID, "slChangeNumberRecord_1")
+            driver.execute_script(
+                "arguments[0].value='100'; arguments[0].dispatchEvent(new Event('change', {bubbles:true}));",
+                select_box
+            )
+            time.sleep(3)
+        except:
+            pass
+
+        # scroll để load JS
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(2)
+
         rows = wait.until(
             EC.presence_of_all_elements_located(
                 (By.CSS_SELECTOR, "#tbRepurchaseResult tbody tr")
@@ -68,8 +83,17 @@ def scrape_hnx_repurchase():
         print(f"✅ Lấy {len(rows)} dòng")
 
         for row in rows:
-            cols = [td.get_attribute("innerText").strip() for td in row.find_elements(By.TAG_NAME, "td")]
-            if len(cols) < 16:
+            cols = [
+                td.get_attribute("innerText").strip()
+                for td in row.find_elements(By.TAG_NAME, "td")
+            ]
+
+            # bỏ dòng rỗng
+            if not any(cols):
+                continue
+
+            # vì bạn dùng tới cols[14] → cần ít nhất 15 cột
+            if len(cols) < 15:
                 continue
 
             all_data.append([
