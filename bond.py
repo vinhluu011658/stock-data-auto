@@ -153,7 +153,7 @@ def update_sheet(sheet, df):
     # ⭐ ĐỔI . → , ở cột lãi suất
     df["Lãi suất phát hành (%/năm)"] = df["Lãi suất phát hành (%/năm)"].astype(str).str.replace(".", ",", regex=False)
     
-    sheet.batch_clear(["G:Q"])
+    sheet.batch_clear(["G1:Q11"])
     
     sheet.update(
         "G1",
