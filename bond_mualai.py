@@ -59,7 +59,7 @@ def scrape_hnx_repurchase():
     all_data = []
 
     try:
-        # ✅ chọn 100 dòng (giữ style của bạn)
+        # ✅ chọn 100 dòng
         try:
             select_box = driver.find_element(By.ID, "slChangeNumberRecord_1")
             driver.execute_script(
@@ -70,42 +70,49 @@ def scrape_hnx_repurchase():
         except:
             pass
 
-        # scroll để load JS
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(2)
+        # 🔥 loop 60 trang
+        for page in range(1, 3):
 
-        rows = wait.until(
-            EC.presence_of_all_elements_located(
-                (By.CSS_SELECTOR, "#tbRepurchaseResult tbody tr")
+            print(f"🚀 Đang lấy trang {page}")
+
+            # chuyển trang bằng JS
+            driver.execute_script(f"changePage1({page})")
+            time.sleep(2)
+
+            # scroll để load JS
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(1)
+
+            rows = wait.until(
+                EC.presence_of_all_elements_located(
+                    (By.CSS_SELECTOR, "#tbRepurchaseResult tbody tr")
+                )
             )
-        )
 
-        print(f"✅ Lấy {len(rows)} dòng")
+            print(f"✅ Trang {page}: {len(rows)} dòng")
 
-        for row in rows:
-            cols = [
-                td.get_attribute("innerText").strip()
-                for td in row.find_elements(By.TAG_NAME, "td")
-            ]
+            for row in rows:
+                cols = [
+                    td.get_attribute("innerText").strip()
+                    for td in row.find_elements(By.TAG_NAME, "td")
+                ]
 
-            # bỏ dòng rỗng
-            if not any(cols):
-                continue
+                if not any(cols):
+                    continue
 
-            # vì bạn dùng tới cols[14] → cần ít nhất 15 cột
-            if len(cols) < 15:
-                continue
+                if len(cols) < 15:
+                    continue
 
-            all_data.append([
-                cols[1],   # Ngày đăng tin
-                cols[2],   # Tên DN
-                cols[3],   # Mã TP
-                cols[6],   # Ngày phát hành
-                cols[7],   # Ngày đáo hạn
-                clean_number(cols[10]),  # Giá trị mua lại
-                clean_number(cols[12]),  # Giá trị còn lại
-                cols[14],  # Ngày mua lại
-            ])
+                all_data.append([
+                    cols[1],
+                    cols[2],
+                    cols[3],
+                    cols[6],
+                    cols[7],
+                    clean_number(cols[10]),
+                    clean_number(cols[12]),
+                    cols[14],
+                ])
 
     except Exception as e:
         print("❌ Lỗi:", e)
