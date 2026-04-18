@@ -76,16 +76,10 @@ def scrape_hnx_repurchase():
                 cols[1],   # Ngày đăng tin
                 cols[2],   # Tên DN
                 cols[3],   # Mã TP
-                clean_number(cols[4]),   # Mệnh giá
-                cols[5],   # Kỳ hạn
                 cols[6],   # Ngày phát hành
                 cols[7],   # Ngày đáo hạn
-                clean_number(cols[8]),   # Giá trị phát hành
-                clean_number(cols[9]),   # Giá trị lưu hành
                 clean_number(cols[10]),  # Giá trị mua lại
-                cols[11],  # Số lượng mua lại
                 clean_number(cols[12]),  # Giá trị còn lại
-                cols[13],  # Số lượng còn lại
                 cols[14],  # Ngày mua lại
             ])
 
@@ -98,16 +92,10 @@ def scrape_hnx_repurchase():
         "Ngày đăng tin",
         "Tên DN",
         "Mã TP",
-        "Mệnh giá",
-        "Kỳ hạn",
         "Ngày phát hành",
         "Ngày đáo hạn",
-        "Giá trị phát hành",
-        "Giá trị lưu hành",
         "Giá trị mua lại",
-        "Số lượng mua lại",
         "Giá trị còn lại",
-        "Số lượng còn lại",
         "Ngày mua lại"
     ])
 
