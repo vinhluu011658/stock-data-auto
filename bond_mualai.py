@@ -130,7 +130,7 @@ def update_sheet(sheet, df):
     df = df.fillna("")
 
     # chỉ xóa từ G15 trở xuống
-    sheet.batch_clear(["G15:Q1000"])
+    sheet.batch_clear(["G15:n25"])
 
     # ghi từ G15
     sheet.update(
