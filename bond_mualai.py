@@ -153,12 +153,12 @@ def update_sheet(sheet, df):
 
     df = df.fillna("")
 
-    # chỉ xóa từ G15 trở xuống
-    sheet.batch_clear(["G15:n25"])
+    # chỉ xóa từ G105 trở xuống
+    sheet.batch_clear(["G105:n205"])
 
-    # ghi từ G15
+    # ghi từ G105
     sheet.update(
-        "G15",
+        "G105",
         [df.columns.tolist()] + df.values.tolist(),
         value_input_option="USER_ENTERED"
     )
