@@ -1,4 +1,4 @@
-name: Run HNX Bond Script
+name: Run HNX Bond Repurchase
 
 on:
   schedule:
