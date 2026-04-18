@@ -59,6 +59,17 @@ def scrape_hnx_bonds_one_page():
     all_data = []
 
     try:
+        # ✅ thêm đoạn chọn 100 dòng (giữ style của bạn)
+        try:
+            select_box = driver.find_element(By.ID, "slChangeNumberRecord_1")
+            driver.execute_script(
+                "arguments[0].value='100'; arguments[0].dispatchEvent(new Event('change', {bubbles:true}));",
+                select_box
+            )
+            time.sleep(3)
+        except:
+            pass
+
         rows = wait.until(
             EC.presence_of_all_elements_located(
                 (By.CSS_SELECTOR, "#tbReleaseResult tbody tr")
@@ -77,7 +88,7 @@ def scrape_hnx_bonds_one_page():
             ky_han = cols[5]
             issue_date = cols[6]
             maturity_date = cols[7]
-            status = cols[17]   # ⭐ TÌNH TRẠNG
+            status = cols[17]
 
             # ===== CALC REMAINING DAYS =====
             remaining_days = ""
@@ -88,9 +99,9 @@ def scrape_hnx_bonds_one_page():
                 pass
 
             all_data.append([
-                cols[1],  # Ngày đăng
-                cols[2],  # Tên DN
-                cols[3],  # Mã TP
+                cols[1],
+                cols[2],
+                cols[3],
                 ky_han,
                 issue_date,
                 maturity_date,
