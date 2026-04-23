@@ -48,7 +48,7 @@ headers = {
 
 # ===== FETCH 1 MÃ =====
 def get_price(symbol):
-    url = f"https://api-finfo.vndirect.com.vn/v4/stock_prices?sort=date&q=code:{symbol}&size=120&page=1"
+    url = f"https://api-finfo.vndirect.com.vn/v4/stock_prices?sort=date&q=code:{symbol}&size=550&page=1"
 
     try:
         res = session.get(url, headers=headers, timeout=10)
