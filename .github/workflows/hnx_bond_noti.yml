@@ -2,7 +2,7 @@ name: Run HNX Bond Notify
 
 on:
   schedule:
-    - cron: '0 13 * * *'  # chạy 20h VN
+    - cron: '10 12 * * *'  # chạy 20h VN
   workflow_dispatch:
 
 jobs:
