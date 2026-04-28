@@ -1,1 +1,26 @@
+name: Foreign Trade
 
+on:
+  schedule:
+    #- cron: '10 11 * * *'  # chạy 18h10 VN (lệch pipeline cũ 10p)
+  workflow_dispatch:
+
+jobs:
+  run-price:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install libs
+        run: pip install requests gspread oauth2client
+
+      - name: Run script
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python foreign_trade.py
