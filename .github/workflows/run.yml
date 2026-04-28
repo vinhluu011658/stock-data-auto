@@ -2,7 +2,7 @@ name: Run Stock Script
 
 on:
   schedule:
-    - cron: '10 10 * * *'  # 17h10 VN
+    - cron: '10 13 * * *'  # 17h10 VN
   workflow_dispatch:
 
 jobs:
