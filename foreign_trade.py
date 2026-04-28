@@ -11,7 +11,7 @@ client = gspread.service_account_from_dict(creds_dict)
 
 # ===== CONFIG =====
 SHEET_ID = "1VX-dTuwjyQpG_kIke8D2ID1KOMrfTy1Ksu75YJT_C-o"
-SHEET_NAME = "Price"
+SHEET_NAME = "Foreign"
 
 # ===== FULL SYMBOL LIST 400 mã =====
 symbols = """AAA AAM AAT ABR ABS ABT ACB ACC ACG ACL ADG ADP ADS AFX AGG AGR ANT ANV APG APH ASG ASM ASP AST
@@ -48,7 +48,7 @@ headers = {
 
 # ===== FETCH 1 MÃ =====
 def get_price(symbol):
-    url = f"https://api-finfo.vndirect.com.vn/v4/stock_prices?sort=date&q=code:{symbol}&size=550&page=1"
+    url = f"https://api-finfo.vndirect.com.vn/v4/foreigns?sort=tradingDate&q=code:{symbol}&size=550&page=1"
 
     try:
         res = session.get(url, headers=headers, timeout=10)
@@ -74,7 +74,7 @@ def get_price(symbol):
 
         print(symbol, "rows:", len(data))
 
-        return [[symbol, row["date"], row["adClose"]] for row in data]
+        return [[symbol, row["date"], row["netVol"]] for row in data]
 
     except Exception as e:
         print(symbol, "ERROR:", e)
@@ -122,7 +122,7 @@ ws = sh.worksheet(SHEET_NAME)
 ws.batch_clear(["A:C"])
 
 if all_data:
-    ws.update("A1", [["symbol", "date", "close"]] + all_data)
+    ws.update("A1", [["symbol", "date", "netVol"]] + all_data)
     print("WRITE OK")
 else:
     ws.update("A1", [["NO DATA"]])
