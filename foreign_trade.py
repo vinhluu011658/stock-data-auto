@@ -4,6 +4,7 @@ import json
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
+from requests.adapters import HTTPAdapter
 
 # ===== CREDS =====
 creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
@@ -13,7 +14,7 @@ client = gspread.service_account_from_dict(creds_dict)
 SHEET_ID = "1VX-dTuwjyQpG_kIke8D2ID1KOMrfTy1Ksu75YJT_C-o"
 SHEET_NAME = "Foreign"
 
-# ===== FULL SYMBOL LIST 400 mã =====
+# ===== SYMBOL LIST =====
 symbols = """AAA AAM AAT ABR ABS ABT ACB ACC ACG ACL ADG ADP ADS AFX AGG AGR ANT ANV APG APH ASG ASM ASP AST
 BAF BCE BCG BCM BFC BHN BIC BID BKG BMC BMI BMP BRC BSI BSR BTP BTT BVH BWE
 C32 C47 CCC CCI CCL CDC CHP CIG CII CKG CLC CLL CLW CMG CMV CMX CNG COM CRC CRE CRV CSM CSV CTD CTF CTG CTI CTR CTS CVT
@@ -38,15 +39,17 @@ UIC
 VAB VAF VCA VCB VCF VCG VCI VCK VDP VDS VFG VGC VHC VHM VIB VIC VID VIP VIX VJC VMD VND VNE VNG VNL VNM VNS VOS VPB VPD VPG VPH VPI VPL VPS VPX VRC VRE VSC VSH VSI VTB VTO VTP VVS
 YBM YEG""".split()
 
-# ===== SESSION =====
+# ===== SESSION OPTIMIZED =====
 session = requests.Session()
+adapter = HTTPAdapter(pool_connections=50, pool_maxsize=50)
+session.mount("https://", adapter)
 
 headers = {
     "User-Agent": "Mozilla/5.0",
     "Accept": "application/json"
 }
 
-# ===== FETCH 1 MÃ =====
+# ===== FETCH 1 SYMBOL =====
 def get_price(symbol):
     url = f"https://api-finfo.vndirect.com.vn/v4/foreigns?sort=tradingDate&q=code:{symbol}&size=550&page=1"
 
@@ -54,46 +57,40 @@ def get_price(symbol):
         res = session.get(url, headers=headers, timeout=10)
 
         if res.status_code != 200:
-            print(symbol, "STATUS:", res.status_code)
             return None
 
-        if not res.text.strip():
-            print(symbol, "EMPTY")
-            return None
-
-        try:
-            json_data = res.json()
-        except:
-            print(symbol, "NOT JSON:", res.text[:100])
-            return None
-
+        json_data = res.json()
         data = json_data.get("data", [])
 
         if not data:
             return None
 
-        print(symbol, "rows:", len(data))
+        # tránh spam API
+        time.sleep(0.05)
 
-        # ✅ CHỈ SỬA Ở ĐÂY
-        return [[row["code"], row["tradingDate"], row["netVol"]] for row in data]
+        return [
+            [row.get("code"), row.get("tradingDate"), row.get("netVol", 0)]
+            for row in data
+        ]
 
-    except Exception as e:
-        print(symbol, "ERROR:", e)
+    except:
         return None
 
-# ===== MAIN LOOP SONG SONG + RETRY =====
+
+# ===== MAIN LOOP =====
 all_data = []
 remaining = set(symbols)
 round_num = 0
+MAX_ROUNDS = 5
 
-while remaining:
+while remaining and round_num < MAX_ROUNDS:
     round_num += 1
     print(f"\n🔁 ROUND {round_num} | còn {len(remaining)} mã")
 
     success = set()
     temp_data = []
 
-    with ThreadPoolExecutor(max_workers=20) as executor:
+    with ThreadPoolExecutor(max_workers=12) as executor:
         futures = {executor.submit(get_price, s): s for s in remaining}
 
         for future in as_completed(futures):
@@ -104,30 +101,34 @@ while remaining:
                 temp_data.extend(result)
                 success.add(symbol)
 
-    # update remaining mã fail
-    remaining = remaining - success
+    remaining -= success
     all_data.extend(temp_data)
 
     print(f"✅ LẤY ĐƯỢC: {len(success)} | ❌ CÒN: {len(remaining)}")
 
     if remaining:
-        print("⏳ Chờ 2s trước khi retry các mã fail...")
         time.sleep(2)
 
-print("\n🎯 DONE FULL 100% 400 mã")
+# log mã fail nếu có
+if remaining:
+    print("❌ FAIL SAU MAX RETRY:", remaining)
 
-# ===== PUSH LÊN SHEET =====
+print("\n🎯 DONE FETCH DATA")
+
+# ===== SORT DATA =====
+all_data.sort(key=lambda x: (x[0], x[1]))
+
+# ===== PUSH TO GOOGLE SHEET =====
 sh = client.open_by_key(SHEET_ID)
 ws = sh.worksheet(SHEET_NAME)
 
 ws.batch_clear(["A:C"])
 
 if all_data:
-    # ✅ CHỈ SỬA Ở ĐÂY
     ws.update("A1", [["code", "tradingDate", "netVol"]] + all_data)
-    print("WRITE OK")
+    print("✅ WRITE OK")
 else:
     ws.update("A1", [["NO DATA"]])
-    print("NO DATA")
+    print("⚠️ NO DATA")
 
-print("DONE 🚀")
+print("🚀 DONE")
