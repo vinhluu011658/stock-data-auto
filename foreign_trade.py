@@ -69,7 +69,12 @@ def get_price(symbol):
         time.sleep(0.05)
 
         return [
-            [row.get("code"), row.get("tradingDate"), row.get("netVol", 0)]
+            [
+                row.get("code"),
+                row.get("tradingDate"),
+                row.get("netVol", 0),
+                row.get("netVal", 0)
+            ]
             for row in data
         ]
 
@@ -122,10 +127,10 @@ all_data.sort(key=lambda x: (x[0], x[1]))
 sh = client.open_by_key(SHEET_ID)
 ws = sh.worksheet(SHEET_NAME)
 
-ws.batch_clear(["A:C"])
+ws.batch_clear(["A:D"])
 
 if all_data:
-    ws.update("A1", [["code", "tradingDate", "netVol"]] + all_data)
+    ws.update("A1", [["code", "tradingDate", "netVol", "netVal"]] + all_data)
     print("✅ WRITE OK")
 else:
     ws.update("A1", [["NO DATA"]])
