@@ -122,7 +122,7 @@ ws = sh.worksheet(SHEET_NAME)
 ws.batch_clear(["A:C"])
 
 if all_data:
-    ws.update("A1", [["symbol", "date", "close"]] + all_data)
+    ws.update("A1", [["ma_cp", "ngay_gd", "gia"]] + all_data)
     print("WRITE OK")
 else:
     ws.update("A1", [["NO DATA"]])
