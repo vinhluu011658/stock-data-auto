@@ -78,8 +78,8 @@ def fetch_symbol(symbol):
             date_str = dt.strftime("%d/%m/%Y")
 
             result.append({
-                "date": date_str,
-                "ngay_gd": symbol,
+                "ngay_gd": date_str,
+                "ma_cp": symbol,
                 "nuoc_ngoai": safe_calc(item.get("foreign_buy"), item.get("foreign_sell")),
                 "tu_doanh": safe_calc(item.get("proprietary_buy"), item.get("proprietary_sell")),
                 "to_chuc_tn": safe_calc(item.get("local_institutional_buy"), item.get("local_institutional_sell")),
@@ -110,7 +110,7 @@ if df.empty:
     exit()
 
 # ===== SORT =====
-df = df.sort_values(by=["Ma CP", "Date"])
+df = df.sort_values(by=["ma_cp", "ngay_gd"])
 
 # ===== PUSH =====
 sheet.clear()
