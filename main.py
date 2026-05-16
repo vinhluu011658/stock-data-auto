@@ -78,14 +78,14 @@ def fetch_symbol(symbol):
             date_str = dt.strftime("%d/%m/%Y")
 
             result.append({
-                "Date": date_str,
-                "Ma CP": symbol,
-                "nuoc ngoai": safe_calc(item.get("foreign_buy"), item.get("foreign_sell")),
-                "tu doanh": safe_calc(item.get("proprietary_buy"), item.get("proprietary_sell")),
-                "to chuc trong nuoc": safe_calc(item.get("local_institutional_buy"), item.get("local_institutional_sell")),
-                "ca nhan trong nuoc": safe_calc(item.get("local_individual_buy"), item.get("local_individual_sell")),
-                "to chuc nuoc ngoai": safe_calc(item.get("foreign_institutional_buy"), item.get("foreign_institutional_sell")),
-                "ca nhan nuoc ngoai": safe_calc(item.get("foreign_individual_buy"), item.get("foreign_individual_sell"))
+                "date": date_str,
+                "ngay_gd": symbol,
+                "nuoc_ngoai": safe_calc(item.get("foreign_buy"), item.get("foreign_sell")),
+                "tu_doanh": safe_calc(item.get("proprietary_buy"), item.get("proprietary_sell")),
+                "to_chuc_tn": safe_calc(item.get("local_institutional_buy"), item.get("local_institutional_sell")),
+                "ca_nhan_tn": safe_calc(item.get("local_individual_buy"), item.get("local_individual_sell")),
+                "to_chuc_nn": safe_calc(item.get("foreign_institutional_buy"), item.get("foreign_institutional_sell")),
+                "ca_nhan_nn": safe_calc(item.get("foreign_individual_buy"), item.get("foreign_individual_sell"))
             })
 
         time.sleep(0.1)
