@@ -75,7 +75,7 @@ def fetch_symbol(symbol):
             ) + timedelta(hours=7)
 
             # 🔥 convert sang string NGAY TỪ ĐÂY
-            date_str = dt.strftime("%d/%m/%Y")
+            date_str = dt.strftime("%Y-%m-%d")
 
             result.append({
                 "ngay_gd": date_str,
