@@ -2,7 +2,7 @@ name: Run HNX Bond Repurchase
 
 on:
   schedule:
-    - cron: '0 11 * * *'  # chạy 18h VN
+    #- cron: '0 11 * * *'  # chạy 18h VN
   workflow_dispatch:
 
 jobs:
