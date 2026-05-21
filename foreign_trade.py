@@ -132,7 +132,7 @@ ws = sh.worksheet(SHEET_NAME)
 ws.batch_clear(["A:D"])
 
 if all_data:
-    ws.update("A1", [["ma_cp", "ngay_gd", "khoi_luong_rong", "gia_tri_rong", "tong_room", "room_hien_tai"]] + all_data)
+    ws.update("A1", [["ma_cp", "ngay_gd", "khoi_luong_rong", "gia_tri_rong", "tong_room", "room_con_lai"]] + all_data)
     print("✅ WRITE OK")
 else:
     ws.update("A1", [["NO DATA"]])
