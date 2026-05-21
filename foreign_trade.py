@@ -73,7 +73,9 @@ def get_price(symbol):
                 row.get("code"),
                 row.get("tradingDate"),
                 row.get("netVol", 0),
-                row.get("netVal", 0)
+                row.get("netVal", 0),
+                row.get("totalRoom", 0),
+                row.get("currentRoom", 0)
             ]
             for row in data
         ]
@@ -130,7 +132,7 @@ ws = sh.worksheet(SHEET_NAME)
 ws.batch_clear(["A:D"])
 
 if all_data:
-    ws.update("A1", [["code", "tradingDate", "netVol", "netVal"]] + all_data)
+    ws.update("A1", [["ma_cp", "ngay_gd", "khoi_luong_rong", "gia_tri_rong", "tong_room", "room_hien_tai"]] + all_data)
     print("✅ WRITE OK")
 else:
     ws.update("A1", [["NO DATA"]])
