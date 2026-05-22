@@ -4,9 +4,16 @@ import gspread
 import json
 import os
 import time
-from oauth2client.service_account import ServiceAccountCredentials
 
-# ===== LOAD GOOGLE CREDS =====
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from oauth2client.service_account import ServiceAccountCredentials
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+# =========================================================
+# GOOGLE SHEET AUTH
+# =========================================================
+
 creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
 
 scope = [
@@ -14,15 +21,23 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+creds = ServiceAccountCredentials.from_json_keyfile_dict(
+    creds_dict,
+    scope
+)
+
 client = gspread.authorize(creds)
 
-# ===== OPEN SHEET =====
+# =========================================================
+# OPEN SHEET
+# =========================================================
+
 sheet = client.open("DATA_STOCK").worksheet("BCTC_kqkd")
 
-# ===== SYMBOL LIST =====
-#symbols = ["BSR", "HPG", "VNM"]
-# ===== SYMBOL LIST =====
+# =========================================================
+# SYMBOL LIST
+# =========================================================
+
 symbols = """
 AAA AAM AAT ABR ABS ABT ACB ACC ACG ACL ADG ADP ADS AFX AGG AGR ANT ANV APG APH ASG ASM ASP AST
 BAF BCE BCG BCM BFC BHN BIC BID BKG BMC BMI BMP BRC BSI BSR BTP BTT BVH BWE
@@ -49,52 +64,87 @@ VAB VAF VCA VCB VCF VCG VCI VCK VDP VDS VFG VGC VHC VHM VIB VIC VID VIP VIX VJC 
 YBM YEG
 """.split()
 
-# ===== API URL =====
+# =========================================================
+# API
+# =========================================================
+
 BASE_URL = "https://api-finance-t19.24hmoney.vn/v1/ios/company/financial-report"
 
 headers = {
     "User-Agent": "Mozilla/5.0"
 }
 
-data_all = []
+# =========================================================
+# SESSION + RETRY
+# =========================================================
 
-for symbol in symbols:
+session = requests.Session()
 
-    print(f"Fetching {symbol}...")
+retry_strategy = Retry(
+    total=5,
+    backoff_factor=1,
+    status_forcelist=[429, 500, 502, 503, 504]
+)
 
-    params = {
-        "symbol": symbol,
-        "period": 1,
-        "view": 2,
-        "page": 1,
-        "expanded": "true"
-    }
+adapter = HTTPAdapter(
+    max_retries=retry_strategy,
+    pool_connections=100,
+    pool_maxsize=100
+)
+
+session.mount("https://", adapter)
+session.mount("http://", adapter)
+
+# =========================================================
+# FETCH FUNCTION
+# =========================================================
+
+def fetch_symbol(symbol):
 
     try:
-        response = requests.get(
+
+        params = {
+            "symbol": symbol,
+            "period": 1,
+            "view": 2,
+            "page": 1,
+            "expanded": "true"
+        }
+
+        response = session.get(
             BASE_URL,
             params=params,
             headers=headers,
-            timeout=30
+            timeout=20
         )
 
+        if response.status_code != 200:
+            print(f"FAILED {symbol}: {response.status_code}")
+            return []
+
         json_data = response.json()
+
+        if "data" not in json_data:
+            print(f"NO DATA {symbol}")
+            return []
 
         headers_data = json_data["data"]["headers"]
         rows = json_data["data"]["rows"]
 
-        # ===== CHỈ LẤY CỘT NORMAL =====
+        # =================================================
+        # GET NORMAL COLUMNS
+        # =================================================
+
         normal_columns = []
         normal_indexes = []
 
         for idx, h in enumerate(headers_data):
 
-            if h["type"] == "normal":
+            if h.get("type") == "normal":
 
-                year = h["year"]
-                quarter = h["quarter"]
+                year = h.get("year")
+                quarter = h.get("quarter")
 
-                # nếu có quarter
                 if quarter != 0:
                     col_name = f"Q{quarter}_{year}"
                 else:
@@ -103,7 +153,12 @@ for symbol in symbols:
                 normal_columns.append(col_name)
                 normal_indexes.append(idx)
 
-        # ===== PARSE DATA =====
+        # =================================================
+        # PARSE ROWS
+        # =================================================
+
+        result = []
+
         for row in rows:
 
             item = {
@@ -118,25 +173,78 @@ for symbol in symbols:
                 if value_idx < len(values):
                     item[normal_columns[col_idx]] = values[value_idx]
 
-            data_all.append(item)
+            result.append(item)
 
-        time.sleep(1)
+        print(f"DONE {symbol}")
+
+        return result
 
     except Exception as e:
-        print(f"Error {symbol}: {e}")
 
-# ===== DATAFRAME =====
+        print(f"ERROR {symbol}: {e}")
+
+        return []
+
+# =========================================================
+# MULTI THREAD FETCH
+# =========================================================
+
+start_time = time.time()
+
+data_all = []
+
+# tăng lên 50 nếu server khỏe
+MAX_WORKERS = 30
+
+with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+
+    futures = {
+        executor.submit(fetch_symbol, symbol): symbol
+        for symbol in symbols
+    }
+
+    for future in as_completed(futures):
+
+        result = future.result()
+
+        if result:
+            data_all.extend(result)
+
+# =========================================================
+# DATAFRAME
+# =========================================================
+
 df = pd.DataFrame(data_all)
 
-# ===== REPLACE NaN =====
+# remove NaN
 df = df.fillna("")
 
-# ===== CLEAR SHEET =====
-sheet.clear()
+# sort
+df = df.sort_values(
+    by=["symbol", "name"]
+).reset_index(drop=True)
 
-# ===== UPDATE SHEET =====
+# =========================================================
+# GOOGLE SHEET UPDATE
+# =========================================================
+
+print("CLEAR SHEET...")
+
+sheet.batch_clear(["A:ZZ"])
+
+print("UPLOAD DATA...")
+
 sheet.update(
-    [df.columns.values.tolist()] + df.values.tolist()
+    "A1",
+    [df.columns.values.tolist()] + df.values.tolist(),
+    value_input_option="RAW"
 )
 
-print("DONE!")
+# =========================================================
+# DONE
+# =========================================================
+
+elapsed = round(time.time() - start_time, 2)
+
+print(f"DONE IN {elapsed} SECONDS")
+print(f"TOTAL ROWS: {len(df)}")
