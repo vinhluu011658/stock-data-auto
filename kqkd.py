@@ -57,37 +57,40 @@ for symbol in symbols:
         headers_data = json_data["data"]["headers"]
         rows = json_data["data"]["rows"]
 
-        # ===== TẠO TÊN CỘT =====
-        columns = []
+        # ===== CHỈ LẤY CỘT NORMAL =====
+        normal_columns = []
+        normal_indexes = []
 
-        for h in headers_data:
-            year = h["year"]
-            q = h["quarter"]
-            t = h["type"]
+        for idx, h in enumerate(headers_data):
 
-            if q == 0:
-                period = f"{year}"
-            else:
-                period = f"Q{q}_{year}"
+            if h["type"] == "normal":
 
-            col_name = f"{period}_{t}"
-            columns.append(col_name)
+                year = h["year"]
+                quarter = h["quarter"]
+
+                # nếu có quarter
+                if quarter != 0:
+                    col_name = f"Q{quarter}_{year}"
+                else:
+                    col_name = str(year)
+
+                normal_columns.append(col_name)
+                normal_indexes.append(idx)
 
         # ===== PARSE DATA =====
         for row in rows:
 
             item = {
                 "symbol": symbol,
-                "key": row.get("key"),
-                "name": row.get("name"),
-                "level": row.get("level")
+                "name": row.get("name")
             }
 
             values = row.get("values", [])
 
-            for i, val in enumerate(values):
-                if i < len(columns):
-                    item[columns[i]] = val
+            for col_idx, value_idx in enumerate(normal_indexes):
+
+                if value_idx < len(values):
+                    item[normal_columns[col_idx]] = values[value_idx]
 
             data_all.append(item)
 
