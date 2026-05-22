@@ -18,7 +18,7 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
 # ===== OPEN SHEET =====
-sheet = client.open("DATA_STOCK").worksheet("BCTC")
+sheet = client.open("DATA_STOCK").worksheet("BCTC_kqkd")
 
 # ===== SYMBOL LIST =====
 symbols = ["BSR", "HPG", "VNM"]
