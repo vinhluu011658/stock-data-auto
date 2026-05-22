@@ -182,9 +182,9 @@ def fetch_symbol_view(symbol, view):
                     value = values[value_idx]
 
                     result.append({
-                        "symbol": symbol,
-                        "type": view_name_map[view],
-                        "name": row.get("name"),
+                        "ma_cp": symbol,
+                        "loai_bc": view_name_map[view],
+                        "tai_khoan": row.get("name"),
                         "nam": col["period"],
                         "gia_tri": value
                     })
