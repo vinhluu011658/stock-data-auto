@@ -141,11 +141,10 @@ def fetch_symbol_view(symbol, view):
         rows = json_data["data"]["rows"]
 
         # =================================================
-        # NORMAL COLUMNS
+        # GET PERIOD COLUMNS
         # =================================================
 
-        normal_columns = []
-        normal_indexes = []
+        period_columns = []
 
         for idx, h in enumerate(headers_data):
 
@@ -155,35 +154,40 @@ def fetch_symbol_view(symbol, view):
                 quarter = h.get("quarter")
 
                 if quarter != 0:
-                    col_name = f"Q{quarter}_{year}"
+                    period_name = f"Q{quarter}_{year}"
                 else:
-                    col_name = str(year)
+                    period_name = str(year)
 
-                normal_columns.append(col_name)
-                normal_indexes.append(idx)
+                period_columns.append({
+                    "index": idx,
+                    "period": period_name
+                })
 
         # =================================================
-        # PARSE DATA
+        # PARSE LONG FORMAT
         # =================================================
 
         result = []
 
         for row in rows:
 
-            item = {
-                "symbol": symbol,
-                "type": view_name_map[view],
-                "name": row.get("name")
-            }
-
             values = row.get("values", [])
 
-            for col_idx, value_idx in enumerate(normal_indexes):
+            for col in period_columns:
+
+                value_idx = col["index"]
 
                 if value_idx < len(values):
-                    item[normal_columns[col_idx]] = values[value_idx]
 
-            result.append(item)
+                    value = values[value_idx]
+
+                    result.append({
+                        "symbol": symbol,
+                        "type": view_name_map[view],
+                        "name": row.get("name"),
+                        "nam": col["period"],
+                        "gia_tri": value
+                    })
 
         print(f"DONE {symbol} VIEW {view}")
 
@@ -233,7 +237,7 @@ df = pd.DataFrame(data_all)
 df = df.fillna("")
 
 df = df.sort_values(
-    by=["symbol", "type", "name"]
+    by=["symbol", "type", "name", "nam"]
 ).reset_index(drop=True)
 
 # =========================================================
@@ -242,7 +246,7 @@ df = df.sort_values(
 
 print("CLEAR SHEET...")
 
-sheet.batch_clear(["A:ZZ"])
+sheet.batch_clear(["A:E"])
 
 print("UPLOAD DATA...")
 
