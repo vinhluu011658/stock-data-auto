@@ -237,7 +237,7 @@ df = pd.DataFrame(data_all)
 df = df.fillna("")
 
 df = df.sort_values(
-    by=["symbol", "type", "name", "nam"]
+    by=["ma_cp", "loai_bc", "tai_khoan", "nam"]
 ).reset_index(drop=True)
 
 # =========================================================
