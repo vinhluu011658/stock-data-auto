@@ -4,8 +4,6 @@ import gspread
 import json
 import os
 import time
-from datetime import datetime, timedelta
-from concurrent.futures import ThreadPoolExecutor
 from oauth2client.service_account import ServiceAccountCredentials
 
 # ===== LOAD GOOGLE CREDS =====
@@ -23,78 +21,93 @@ client = gspread.authorize(creds)
 sheet = client.open("DATA_STOCK").worksheet("BCTC")
 
 # ===== SYMBOL LIST =====
-symbols = """BSR HPG VNM""".split()  # test ít trước
+symbols = ["BSR", "HPG", "VNM"]
+
+# ===== API URL =====
+BASE_URL = "https://api-finance-t19.24hmoney.vn/v1/ios/company/financial-report"
+
+headers = {
+    "User-Agent": "Mozilla/5.0"
+}
 
 data_all = []
 
-# ===== HÀM TRỪ =====
-def safe_calc(a, b):
-    return (a or 0) - (b or 0)
+for symbol in symbols:
 
-headers = {"User-Agent": "Mozilla/5.0"}
+    print(f"Fetching {symbol}...")
 
-# ===== FETCH =====
-def fetch_symbol(symbol):
-    url = f"https://api-finance-t19.24hmoney.vn/v1/ios/stock/statistic-investor-history?symbol={symbol}"
-    result = []
+    params = {
+        "symbol": symbol,
+        "period": 1,
+        "view": 2,
+        "page": 1,
+        "expanded": "true"
+    }
 
     try:
-        res = requests.get(url, headers=headers, timeout=10)
-        data = res.json()
+        response = requests.get(
+            BASE_URL,
+            params=params,
+            headers=headers,
+            timeout=30
+        )
 
-        for item in data.get("data", []):
-            timestamp = item.get("trading_date") or item.get("date")
+        json_data = response.json()
 
-            if not timestamp:
-                continue
+        headers_data = json_data["data"]["headers"]
+        rows = json_data["data"]["rows"]
 
-            dt = datetime.utcfromtimestamp(
-                int(timestamp) / 1000 if int(timestamp) > 1e12 else int(timestamp)
-            ) + timedelta(hours=7)
+        # ===== TẠO TÊN CỘT =====
+        columns = []
 
-            # 🔥 convert sang string NGAY TỪ ĐÂY
-            date_str = dt.strftime("%Y-%m-%d")
+        for h in headers_data:
+            year = h["year"]
+            q = h["quarter"]
+            t = h["type"]
 
-            result.append({
-                "ngay_gd": date_str,
-                "ma_cp": symbol,
-                "nuoc_ngoai": safe_calc(item.get("foreign_buy"), item.get("foreign_sell")),
-                "tu_doanh": safe_calc(item.get("proprietary_buy"), item.get("proprietary_sell")),
-                "to_chuc_tn": safe_calc(item.get("local_institutional_buy"), item.get("local_institutional_sell")),
-                "ca_nhan_tn": safe_calc(item.get("local_individual_buy"), item.get("local_individual_sell")),
-                "to_chuc_nn": safe_calc(item.get("foreign_institutional_buy"), item.get("foreign_institutional_sell")),
-                "ca_nhan_nn": safe_calc(item.get("foreign_individual_buy"), item.get("foreign_individual_sell"))
-            })
+            if q == 0:
+                period = f"{year}"
+            else:
+                period = f"Q{q}_{year}"
 
-        time.sleep(0.1)
+            col_name = f"{period}_{t}"
+            columns.append(col_name)
+
+        # ===== PARSE DATA =====
+        for row in rows:
+
+            item = {
+                "symbol": symbol,
+                "key": row.get("key"),
+                "name": row.get("name"),
+                "level": row.get("level")
+            }
+
+            values = row.get("values", [])
+
+            for i, val in enumerate(values):
+                if i < len(columns):
+                    item[columns[i]] = val
+
+            data_all.append(item)
+
+        time.sleep(1)
 
     except Exception as e:
-        print(f"Lỗi {symbol}: {e}")
-
-    return result
-
-# ===== MULTI THREAD =====
-with ThreadPoolExecutor(max_workers=10) as executor:
-    results = executor.map(fetch_symbol, symbols)
-
-for r in results:
-    data_all.extend(r)
+        print(f"Error {symbol}: {e}")
 
 # ===== DATAFRAME =====
 df = pd.DataFrame(data_all)
 
-if df.empty:
-    print("Không có dữ liệu")
-    exit()
+# ===== REPLACE NaN =====
+df = df.fillna("")
 
-# ===== SORT =====
-df = df.sort_values(by=["ma_cp", "ngay_gd"])
-
-# ===== PUSH =====
+# ===== CLEAR SHEET =====
 sheet.clear()
+
+# ===== UPDATE SHEET =====
 sheet.update(
-    [df.columns.tolist()] + df.values.tolist(),
-    value_input_option="USER_ENTERED"
+    [df.columns.values.tolist()] + df.values.tolist()
 )
 
-print("DONE")
+print("DONE!")
