@@ -11,7 +11,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # =========================================================
-# GOOGLE SHEET AUTH
+# GOOGLE AUTH
 # =========================================================
 
 creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
@@ -32,7 +32,7 @@ client = gspread.authorize(creds)
 # OPEN SHEET
 # =========================================================
 
-sheet = client.open("DATA_STOCK").worksheet("BCTC_kqkd")
+sheet = client.open("DATA_STOCK").worksheet("BCTC")
 
 # =========================================================
 # SYMBOL LIST
@@ -63,6 +63,16 @@ UIC
 VAB VAF VCA VCB VCF VCG VCI VCK VDP VDS VFG VGC VHC VHM VIB VIC VID VIP VIX VJC VMD VND VNE VNG VNL VNM VNS VOS VPB VPD VPG VPH VPI VPL VPS VPX VRC VRE VSC VSH VSI VTB VTO VTP VVS
 YBM YEG
 """.split()
+
+# =========================================================
+# REPORT TYPE
+# =========================================================
+
+view_name_map = {
+    1: "CDKT",
+    2: "KQKD",
+    3: "LCTT"
+}
 
 # =========================================================
 # API
@@ -99,14 +109,14 @@ session.mount("http://", adapter)
 # FETCH FUNCTION
 # =========================================================
 
-def fetch_symbol(symbol):
+def fetch_symbol_view(symbol, view):
 
     try:
 
         params = {
             "symbol": symbol,
             "period": 1,
-            "view": 2,
+            "view": view,
             "page": 1,
             "expanded": "true"
         }
@@ -119,20 +129,19 @@ def fetch_symbol(symbol):
         )
 
         if response.status_code != 200:
-            print(f"FAILED {symbol}: {response.status_code}")
+            print(f"FAILED {symbol} VIEW {view}")
             return []
 
         json_data = response.json()
 
         if "data" not in json_data:
-            print(f"NO DATA {symbol}")
             return []
 
         headers_data = json_data["data"]["headers"]
         rows = json_data["data"]["rows"]
 
         # =================================================
-        # GET NORMAL COLUMNS
+        # NORMAL COLUMNS
         # =================================================
 
         normal_columns = []
@@ -154,7 +163,7 @@ def fetch_symbol(symbol):
                 normal_indexes.append(idx)
 
         # =================================================
-        # PARSE ROWS
+        # PARSE DATA
         # =================================================
 
         result = []
@@ -163,6 +172,7 @@ def fetch_symbol(symbol):
 
             item = {
                 "symbol": symbol,
+                "type": view_name_map[view],
                 "name": row.get("name")
             }
 
@@ -175,33 +185,37 @@ def fetch_symbol(symbol):
 
             result.append(item)
 
-        print(f"DONE {symbol}")
+        print(f"DONE {symbol} VIEW {view}")
 
         return result
 
     except Exception as e:
 
-        print(f"ERROR {symbol}: {e}")
+        print(f"ERROR {symbol} VIEW {view}: {e}")
 
         return []
 
 # =========================================================
-# MULTI THREAD FETCH
+# MAIN
 # =========================================================
 
 start_time = time.time()
 
 data_all = []
 
-# tăng lên 50 nếu server khỏe
 MAX_WORKERS = 30
 
 with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
 
-    futures = {
-        executor.submit(fetch_symbol, symbol): symbol
-        for symbol in symbols
-    }
+    futures = []
+
+    for symbol in symbols:
+
+        for view in [1, 2, 3]:
+
+            futures.append(
+                executor.submit(fetch_symbol_view, symbol, view)
+            )
 
     for future in as_completed(futures):
 
@@ -216,16 +230,14 @@ with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
 
 df = pd.DataFrame(data_all)
 
-# remove NaN
 df = df.fillna("")
 
-# sort
 df = df.sort_values(
-    by=["symbol", "name"]
+    by=["symbol", "type", "name"]
 ).reset_index(drop=True)
 
 # =========================================================
-# GOOGLE SHEET UPDATE
+# UPDATE SHEET
 # =========================================================
 
 print("CLEAR SHEET...")
