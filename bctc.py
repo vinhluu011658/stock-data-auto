@@ -234,10 +234,48 @@ with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
 
 df = pd.DataFrame(data_all)
 
+# =========================================================
+# CLEAN DATA
+# =========================================================
+
 df = df.fillna("")
 
+# =========================================================
+# REMOVE DUPLICATES
+# ƯU TIÊN GIỮ DÒNG CÓ GIÁ TRỊ
+# =========================================================
+
+df["is_empty"] = (
+    df["gia_tri"].astype(str).str.strip() == ""
+)
+
+df = (
+    df.sort_values(
+        by=["is_empty"]
+    )
+    .drop_duplicates(
+        subset=[
+            "ma_cp",
+            "loai_bc",
+            "tai_khoan",
+            "nam"
+        ],
+        keep="first"
+    )
+    .drop(columns=["is_empty"])
+)
+
+# =========================================================
+# SORT
+# =========================================================
+
 df = df.sort_values(
-    by=["ma_cp", "loai_bc", "tai_khoan", "nam"]
+    by=[
+        "ma_cp",
+        "loai_bc",
+        "tai_khoan",
+        "nam"
+    ]
 ).reset_index(drop=True)
 
 # =========================================================
@@ -250,17 +288,42 @@ sheet.batch_clear(["A:E"])
 
 print("UPLOAD DATA...")
 
-sheet.update(
-    "A1",
-    [df.columns.values.tolist()] + df.values.tolist(),
-    value_input_option="RAW"
-)
+all_values = [
+    df.columns.values.tolist()
+] + df.values.tolist()
+
+BATCH_SIZE = 5000
+
+for start_row in range(
+    0,
+    len(all_values),
+    BATCH_SIZE
+):
+
+    end_row = start_row + BATCH_SIZE
+
+    batch = all_values[start_row:end_row]
+
+    sheet.update(
+        f"A{start_row + 1}",
+        batch,
+        value_input_option="RAW"
+    )
+
+    print(
+        f"UPLOADED ROWS {start_row} -> {end_row}"
+    )
+
+    time.sleep(1)
 
 # =========================================================
 # DONE
 # =========================================================
 
-elapsed = round(time.time() - start_time, 2)
+elapsed = round(
+    time.time() - start_time,
+    2
+)
 
 print(f"DONE IN {elapsed} SECONDS")
 print(f"TOTAL ROWS: {len(df)}")
