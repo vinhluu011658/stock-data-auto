@@ -156,7 +156,7 @@ def fetch_symbol_view(symbol, view):
                 if quarter != 0:
                     period_name = f"Q{quarter}_{year}"
                 else:
-                    period_name = str(year)
+                    period_name = int(year)
 
                 period_columns.append({
                     "index": idx,
