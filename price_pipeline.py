@@ -74,7 +74,7 @@ def get_price(symbol):
 
         print(symbol, "rows:", len(data))
 
-        return [[symbol, row["date"], row["adClose"]] for row in data]
+        return [[symbol, row["date"], row["adClose"],row["adHigh"], row["adLow"], row["nmVolume"], row["nmValue"] ] for row in data]
 
     except Exception as e:
         print(symbol, "ERROR:", e)
@@ -122,7 +122,7 @@ ws = sh.worksheet(SHEET_NAME)
 ws.batch_clear(["A:C"])
 
 if all_data:
-    ws.update("A1", [["ma_cp", "ngay_gd", "gia"]] + all_data)
+    ws.update("A1", [["ma_cp", "ngay_gd", "gia","cao_nhat", "thap_nhat", "khoi_lg_gd", "gia_tri_gd" ]] + all_data)
     print("WRITE OK")
 else:
     ws.update("A1", [["NO DATA"]])
