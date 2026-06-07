@@ -99,7 +99,7 @@ def get_kqkd(symbol):
 
         for year_block in value["data"]:
 
-            year = year_block["year"]
+            year = year_block["time"]
 
             for item in year_block["data"]:
 
@@ -110,7 +110,7 @@ def get_kqkd(symbol):
                     "KQKD",
                     code,
                     account_map.get(code, ""),
-                    time,
+                    year,
                     item["value"]
                 ])
 
