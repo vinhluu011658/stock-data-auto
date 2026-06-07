@@ -26,3 +26,8 @@ jobs:
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python bctc_cafef_kqkd_quy.py
+        
+      - name: Run Can doi ket toan va Luu chuyen dong tien
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python bctc_cafef_cdkt_quy.py
