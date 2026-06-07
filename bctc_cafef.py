@@ -15,7 +15,26 @@ SHEET_NAME = "BCTC"
 # ===== DANH SÁCH MÃ =====
 
 symbols = """
-AAA AAM
+AAA AAM AAT ABR ABS ABT ACB ACC ACG ACL ADG ADP ADS
+BAF BCE BCG BCM BFC BHN BIC BID BKG BMI BMP BSI BSR
+BVH BWE
+CII CMG CTD CTG CTR CTS
+DBC DCM DGC DGW DIG DPM DPR DRC DXG DXS
+EIB
+FCN FPT FRT FTS
+GAS GEX GMD GVR
+HAG HAH HCM HDB HDC HDG HPG HSG
+IDC
+KBC KDC KDH KSB
+LPB
+MBB MIG MSN MWG
+NAB NLG NVL
+OCB ORS
+PAN PC1 PDR PET PLX POW PTB PVD PVT
+REE
+SAB SHB SIP SSI STB SZC
+TCB TCH TCM TPB
+VCB VCG VCI VHC VHM VIC VIX VJC VND VNM VPB VRE
 """.split()
 
 # ===== SESSION =====
@@ -60,7 +79,7 @@ def get_kqkd(symbol):
 
         value = js["value"]
 
-        # map code -> tên tài khoản
+        # code -> tên tài khoản
         account_map = {
             item["code"]: item["name"]
             for item in value["templace"]
@@ -74,12 +93,15 @@ def get_kqkd(symbol):
 
             for item in year_block["data"]:
 
+                code = item["code"]
+
                 rows.append([
-                    symbol,
-                    "KQKD",
-                    account_map.get(item["code"], ""),
-                    year,
-                    item["value"]
+                    symbol,                          # ma_cp
+                    "KQKD",                          # loai_bc
+                    code,                            # code
+                    account_map.get(code, ""),       # tai_khoan
+                    year,                            # nam
+                    item["value"]                    # gia_tri
                 ])
 
         print(symbol, len(rows))
@@ -121,6 +143,7 @@ sheet_data = [
     [
         "ma_cp",
         "loai_bc",
+        "code",
         "tai_khoan",
         "nam",
         "gia_tri"
