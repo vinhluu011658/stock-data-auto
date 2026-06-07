@@ -65,7 +65,7 @@ def get_report(symbol, loai_bc, base_url):
         f"{base_url}"
         f"?symbol={symbol}"
         "&pageIndex=1"
-        "&pageSize=5"
+        "&pageSize=4"
         "&reportType=ALL"
         "&TypeTime=QUY"
     )
