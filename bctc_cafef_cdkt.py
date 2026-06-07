@@ -4,7 +4,9 @@ import json
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# ===== GOOGLE =====
+# =========================
+# GOOGLE SHEETS
+# =========================
 
 creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
 client = gspread.service_account_from_dict(creds_dict)
@@ -12,7 +14,9 @@ client = gspread.service_account_from_dict(creds_dict)
 SHEET_ID = "1VX-dTuwjyQpG_kIke8D2ID1KOMrfTy1Ksu75YJT_C-o"
 SHEET_NAME = "BCTC"
 
-# ===== SYMBOLS =====
+# =========================
+# SYMBOLS
+# =========================
 
 symbols = """
 AAA AAM AAT ABR ABS ABT ACB ACC ACG ACL ADG ADP ADS AFX AGG AGR ANT ANV APG APH ASG ASM ASP AST
@@ -40,7 +44,9 @@ VAB VAF VCA VCB VCF VCG VCI VCK VDP VDS VFG VGC VHC VHM VIB VIC VID VIP VIX VJC 
 YBM YEG
 """.split()
 
-# ===== SESSION =====
+# =========================
+# SESSION
+# =========================
 
 session = requests.Session()
 
@@ -49,7 +55,9 @@ headers = {
     "Referer": "https://cafef.vn/"
 }
 
-# ===== CDKT =====
+# =========================
+# GET CDKT
+# =========================
 
 def get_cdkt(symbol):
 
@@ -57,7 +65,7 @@ def get_cdkt(symbol):
         "https://apiweb.cafef.vn/api/v2/BCTC/GetReportCDKT"
         f"?symbol={symbol}"
         "&pageIndex=1"
-        "&pageSize=10"
+        "&pageSize=5"
         "&reportType=ALL"
         "&TypeTime=NAM"
     )
@@ -71,18 +79,14 @@ def get_cdkt(symbol):
         )
 
         if r.status_code != 200:
-            print(symbol, r.status_code)
             return []
 
         js = r.json()
 
         if not js.get("isSuccess"):
-            print(symbol, "FAIL")
             return []
 
         value = js["value"]
-
-        # ===== MAP CODE -> TÊN =====
 
         account_map = {}
 
@@ -93,8 +97,6 @@ def get_cdkt(symbol):
                 account_map[item["code"]] = item["name"]
 
         rows = []
-
-        # ===== DỮ LIỆU =====
 
         for section in value["data"]:
 
@@ -121,15 +123,17 @@ def get_cdkt(symbol):
 
     except Exception as e:
 
-        print(symbol, "ERROR:", e)
+        print(symbol, e)
 
         return []
 
-# ===== CHẠY =====
+# =========================
+# DOWNLOAD SONG SONG
+# =========================
 
 all_data = []
 
-with ThreadPoolExecutor(max_workers=5) as executor:
+with ThreadPoolExecutor(max_workers=30) as executor:
 
     futures = {
         executor.submit(get_cdkt, symbol): symbol
@@ -143,18 +147,23 @@ with ThreadPoolExecutor(max_workers=5) as executor:
         if result:
             all_data.extend(result)
 
-# ===== APPEND SHEET =====
+print("TOTAL ROWS:", len(all_data))
+
+# =========================
+# APPEND SHEET
+# =========================
 
 sh = client.open_by_key(SHEET_ID)
 ws = sh.worksheet(SHEET_NAME)
 
-existing_rows = len(ws.col_values(1))
+last_row = len(ws.col_values(1))
 
-print("Current rows:", existing_rows)
+if last_row == 0:
+    last_row = 1
 
 ws.update(
-    f"A{existing_rows + 1}",
+    f"A{last_row + 1}",
     all_data
 )
 
-print(f"APPEND DONE: {len(all_data)} rows")
+print(f"APPEND DONE: {len(all_data):,} rows")
