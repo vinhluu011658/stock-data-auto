@@ -110,7 +110,7 @@ def get_kqkd(symbol):
                     "KQKD",
                     code,
                     account_map.get(code, ""),
-                    year,
+                    time,
                     item["value"]
                 ])
 
