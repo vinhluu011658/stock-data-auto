@@ -12,7 +12,7 @@ creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
 client = gspread.service_account_from_dict(creds_dict)
 
 SHEET_ID = "1VX-dTuwjyQpG_kIke8D2ID1KOMrfTy1Ksu75YJT_C-o"
-SHEET_NAME = "BCTC"
+SHEET_NAME = "BCTC_Quy"
 
 # =========================
 # TEST SYMBOLS
@@ -67,7 +67,7 @@ def get_report(symbol, loai_bc, base_url):
         "&pageIndex=1"
         "&pageSize=5"
         "&reportType=ALL"
-        "&TypeTime=NAM"
+        "&TypeTime=QUY"
     )
 
     try:
@@ -112,7 +112,7 @@ def get_report(symbol, loai_bc, base_url):
 
             for year_block in section["data"]:
 
-                year = year_block["year"]
+                year = year_block["time"]
 
                 for item in year_block["data"]:
 
