@@ -1,5 +1,5 @@
 
-name: Run Bao cao tai chinh - Cafef - Ket qua kinh doanh
+name: Run Bao cao tai chinh - Cafef
 
 on:
   #schedule:
@@ -22,7 +22,12 @@ jobs:
       - name: Install libraries
         run: pip install -r requirements.txt
 
-      - name: Run script
+      - name: Run ket qua kinh doanh
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python bctc_cafef_kqkd.py
+
+      - name: Run Can doi ke toan va Luu chuyen tien te
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python bctc_cafef_cdkt.py
