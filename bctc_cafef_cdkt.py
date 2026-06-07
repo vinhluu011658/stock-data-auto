@@ -126,7 +126,7 @@ with ThreadPoolExecutor(max_workers=5) as executor:
 sh = client.open_by_key(SHEET_ID)
 ws = sh.worksheet(SHEET_NAME)
 
-existing_rows = len(ws.get_all_values())
+existing_rows = len(ws.col_values(1))
 
 print("Current rows:", existing_rows)
 
