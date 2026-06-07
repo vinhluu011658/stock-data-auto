@@ -12,7 +12,7 @@ creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
 client = gspread.service_account_from_dict(creds_dict)
 
 SHEET_ID = "1VX-dTuwjyQpG_kIke8D2ID1KOMrfTy1Ksu75YJT_C-o"
-SHEET_NAME = "BCTC"
+SHEET_NAME = "BCTC_Quy"
 
 # =========================
 # DANH SÁCH MÃ
@@ -67,7 +67,7 @@ def get_kqkd(symbol):
         "&pageIndex=1"
         "&pageSize=5"
         "&reportType=KQKD"
-        "&TypeTime=NAM"
+        "&TypeTime=QUY"
     )
 
     try:
