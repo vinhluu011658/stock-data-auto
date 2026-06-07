@@ -98,8 +98,7 @@ headers_out = [
     "VonHoaThiTruong",
     "KhopLenh10Phien",
     "KlcpNY",
-    "KlcpLuuHanh",
-    "ThoiGian"
+    "KlcpLuuHanh"
 ]
 
 sheet_data = [headers_out]
@@ -116,8 +115,7 @@ for row in results:
         row.get("VonHoaThiTruong", ""),
         row.get("KhopLenh10Phien", ""),
         row.get("KlcpNY", ""),
-        row.get("KlcpLuuHanh", ""),
-        row.get("ThoiGian", "")
+        row.get("KlcpLuuHanh", "")
     ])
 
 # ===== GHI SHEET =====
@@ -126,7 +124,7 @@ sh = client.open_by_key(SHEET_ID)
 ws = sh.worksheet(SHEET_NAME)
 
 # bắt đầu từ cột F
-ws.batch_clear(["F:P"])
+ws.batch_clear(["F:o"])
 
 ws.update("F1", sheet_data)
 
