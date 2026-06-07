@@ -4,7 +4,9 @@ import json
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# ===== GOOGLE SHEET =====
+# =========================
+# GOOGLE SHEETS
+# =========================
 
 creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
 client = gspread.service_account_from_dict(creds_dict)
@@ -12,7 +14,9 @@ client = gspread.service_account_from_dict(creds_dict)
 SHEET_ID = "1VX-dTuwjyQpG_kIke8D2ID1KOMrfTy1Ksu75YJT_C-o"
 SHEET_NAME = "BCTC"
 
-# ===== DANH SÁCH MÃ =====
+# =========================
+# DANH SÁCH MÃ
+# =========================
 
 symbols = """
 AAA AAM AAT ABR ABS ABT ACB ACC ACG ACL ADG ADP ADS AFX AGG AGR ANT ANV APG APH ASG ASM ASP AST
@@ -40,7 +44,9 @@ VAB VAF VCA VCB VCF VCG VCI VCK VDP VDS VFG VGC VHC VHM VIB VIC VID VIP VIX VJC 
 YBM YEG
 """.split()
 
-# ===== SESSION =====
+# =========================
+# SESSION
+# =========================
 
 session = requests.Session()
 
@@ -49,7 +55,9 @@ headers = {
     "Referer": "https://cafef.vn/"
 }
 
-# ===== LẤY KQKD =====
+# =========================
+# LẤY KQKD
+# =========================
 
 def get_kqkd(symbol):
 
@@ -82,7 +90,6 @@ def get_kqkd(symbol):
 
         value = js["value"]
 
-        # code -> tên tài khoản
         account_map = {
             item["code"]: item["name"]
             for item in value["templace"]
@@ -99,12 +106,12 @@ def get_kqkd(symbol):
                 code = item["code"]
 
                 rows.append([
-                    symbol,                          # ma_cp
-                    "KQKD",                          # loai_bc
-                    code,                            # code
-                    account_map.get(code, ""),       # tai_khoan
-                    year,                            # nam
-                    item["value"]                    # gia_tri
+                    symbol,
+                    "KQKD",
+                    code,
+                    account_map.get(code, ""),
+                    year,
+                    item["value"]
                 ])
 
         print(symbol, len(rows))
@@ -117,11 +124,13 @@ def get_kqkd(symbol):
 
         return []
 
-# ===== CHẠY SONG SONG =====
+# =========================
+# CHẠY SONG SONG
+# =========================
 
 all_data = []
 
-with ThreadPoolExecutor(max_workers=20) as executor:
+with ThreadPoolExecutor(max_workers=30) as executor:
 
     futures = {
         executor.submit(get_kqkd, symbol): symbol
@@ -135,11 +144,16 @@ with ThreadPoolExecutor(max_workers=20) as executor:
         if result:
             all_data.extend(result)
 
-# ===== GHI SHEET =====
+print("TOTAL ROWS:", len(all_data))
+
+# =========================
+# GHI GOOGLE SHEET
+# =========================
 
 sh = client.open_by_key(SHEET_ID)
 ws = sh.worksheet(SHEET_NAME)
 
+# XÓA DỮ LIỆU CŨ
 ws.clear()
 
 sheet_data = [
@@ -155,6 +169,7 @@ sheet_data = [
 
 sheet_data.extend(all_data)
 
+# GHI MỚI
 ws.update("A1", sheet_data)
 
 print(f"DONE: {len(all_data):,} rows")
