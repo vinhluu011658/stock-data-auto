@@ -27,11 +27,11 @@ jobs:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python price_pipeline.py
 
-      # 👉 sau đó chạy main.py
-      - name: Run main.py
+      # 👉 sau đó chạy nha_dau_tu.py
+      - name: Run nha_dau_tu.py
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
-        run: python main.py
+        run: python nha_dau_tu.py
 
       # 👉 sau đó chạy rate.py
       - name: Run rate.py
