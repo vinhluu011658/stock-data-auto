@@ -2,7 +2,7 @@ name: Stock info from cafef
 
 on:
   #schedule:
-    #- cron: '10 11 * * *'  # chạy 18h10 VN (lệch pipeline cũ 10p)
+    #- cron: '0 15 * * *'  # chạy 18h10 VN (lệch pipeline cũ 10p)
   workflow_dispatch:
 
 jobs:
