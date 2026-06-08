@@ -65,7 +65,7 @@ def get_kqkd(symbol):
         "https://apiweb.cafef.vn/api/v1/BCTC/GetReportDetail"
         f"?symbol={symbol}"
         "&pageIndex=1"
-        "&pageSize=7"
+        "&pageSize=4"
         "&reportType=KQKD"
         "&TypeTime=QUY"
     )
