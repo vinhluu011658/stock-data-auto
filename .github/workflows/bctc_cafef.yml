@@ -2,8 +2,8 @@
 name: Run Bao cao tai chinh - Cafef
 
 on:
-  #schedule:
-    #- cron: '10 13 * * *'  # 17h10 VN
+  schedule:
+    - cron: '0 0 1 * *'   # 00:00 UTC ngày 1 hàng tháng (07:00 VN)
   workflow_dispatch:
 
 jobs:
