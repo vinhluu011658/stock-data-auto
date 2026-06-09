@@ -190,6 +190,31 @@ with ThreadPoolExecutor(max_workers=30) as executor:
 print("TOTAL ROWS:", len(all_data))
 
 # =========================
+# LOẠI BỎ DỮ LIỆU TRÙNG
+# =========================
+
+seen = set()
+unique_data = []
+
+for row in all_data:
+
+    key = (
+        row[0],              # ma_cp
+        row[1],              # loai_bc
+        str(row[2]).strip(), # code
+        row[4]               # nam
+    )
+
+    if key not in seen:
+        seen.add(key)
+        unique_data.append(row)
+
+all_data = unique_data
+
+print("AFTER DEDUP:", len(all_data))
+
+
+# =========================
 # APPEND GOOGLE SHEET
 # =========================
 
