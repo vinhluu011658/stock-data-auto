@@ -100,13 +100,13 @@ with ThreadPoolExecutor(max_workers=20) as executor:
 
 headers_out = [
     "ma_cp",
-    "EPSphaLoang",
-    "P/E",
-    "GiaTriSoSach",
-    "Beta",
-    "VonHoaThiTruong",
-    "KlcpNY",
-    "KlcpLuuHanh"
+    "eps_pha_loang",
+    "pe",
+    "gia_tri_so_sach",
+    "beta",
+    "von_hoa_tt",
+    "klcp_niem_yiet",
+    "klcp_luu_hanh"
 ]
 
 sheet_data = [headers_out]
