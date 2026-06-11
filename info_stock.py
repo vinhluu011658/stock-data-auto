@@ -96,6 +96,15 @@ with ThreadPoolExecutor(max_workers=20) as executor:
         if data:
             results.append(data)
 
+def clean_number(v):
+    if v is None or v == "":
+        return ""
+
+    try:
+        return float(str(v).replace(",", ""))
+    except:
+        return ""
+
 # ===== HEADER =====
 
 headers_out = [
@@ -112,15 +121,15 @@ sheet_data = [headers_out]
 
 for row in results:
 
-    sheet_data.append([
-        row.get("ma_cp", ""),
-        row.get("EPSphaLoang", ""),
-        row.get("P/E", ""),
-        row.get("GiaTriSoSach", ""),
-        row.get("Beta", ""),
-        row.get("KlcpNY", ""),
-        row.get("KlcpLuuHanh", "")
-    ])
+sheet_data.append([
+    row.get("ma_cp", ""),
+    clean_number(row.get("EPSphaLoang", "")),
+    clean_number(row.get("P/E", "")),
+    clean_number(row.get("GiaTriSoSach", "")),
+    clean_number(row.get("Beta", "")),
+    clean_number(row.get("KlcpNY", "")),
+    clean_number(row.get("KlcpLuuHanh", ""))
+])
 
 # ===== GHI SHEET =====
 
