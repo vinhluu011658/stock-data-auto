@@ -121,15 +121,15 @@ sheet_data = [headers_out]
 
 for row in results:
 
-sheet_data.append([
-    row.get("ma_cp", ""),
-    clean_number(row.get("EPSphaLoang", "")),
-    clean_number(row.get("P/E", "")),
-    clean_number(row.get("GiaTriSoSach", "")),
-    clean_number(row.get("Beta", "")),
-    clean_number(row.get("KlcpNY", "")),
-    clean_number(row.get("KlcpLuuHanh", ""))
-])
+    sheet_data.append([
+       row.get("ma_cp", ""),
+       clean_number(row.get("EPSphaLoang", "")),
+       clean_number(row.get("P/E", "")),
+       clean_number(row.get("GiaTriSoSach", "")),
+       clean_number(row.get("Beta", "")),
+       clean_number(row.get("KlcpNY", "")),
+       clean_number(row.get("KlcpLuuHanh", ""))
+    ])
 
 # ===== GHI SHEET =====
 
