@@ -100,13 +100,11 @@ with ThreadPoolExecutor(max_workers=20) as executor:
 
 headers_out = [
     "ma_cp",
-    "EPScoBan",
     "EPSphaLoang",
     "P/E",
     "GiaTriSoSach",
     "Beta",
     "VonHoaThiTruong",
-    "KhopLenh10Phien",
     "KlcpNY",
     "KlcpLuuHanh"
 ]
@@ -117,13 +115,11 @@ for row in results:
 
     sheet_data.append([
         row.get("ma_cp", ""),
-        row.get("EPScoBan", ""),
         row.get("EPSphaLoang", ""),
         row.get("P/E", ""),
         row.get("GiaTriSoSach", ""),
         row.get("Beta", ""),
         row.get("VonHoaThiTruong", ""),
-        row.get("KhopLenh10Phien", ""),
         row.get("KlcpNY", ""),
         row.get("KlcpLuuHanh", "")
     ])
@@ -134,7 +130,7 @@ sh = client.open_by_key(SHEET_ID)
 ws = sh.worksheet(SHEET_NAME)
 
 # bắt đầu từ cột F
-ws.batch_clear(["F:o"])
+ws.batch_clear(["F:M"])
 
 ws.update("F1", sheet_data)
 
