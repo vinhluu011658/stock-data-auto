@@ -45,6 +45,11 @@ jobs:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python foreign_trade.py
 
+      # 👉 sau đó chạy info_stock.py
+      - name: Run info_stock.py
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python info_stock.py
         
       - name: Done
         run: echo "Workflow hoàn tất"
