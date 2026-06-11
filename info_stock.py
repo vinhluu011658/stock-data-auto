@@ -104,7 +104,6 @@ headers_out = [
     "pe",
     "gia_tri_so_sach",
     "beta",
-    "von_hoa_tt",
     "klcp_niem_yiet",
     "klcp_luu_hanh"
 ]
@@ -119,7 +118,6 @@ for row in results:
         row.get("P/E", ""),
         row.get("GiaTriSoSach", ""),
         row.get("Beta", ""),
-        row.get("VonHoaThiTruong", ""),
         row.get("KlcpNY", ""),
         row.get("KlcpLuuHanh", "")
     ])
