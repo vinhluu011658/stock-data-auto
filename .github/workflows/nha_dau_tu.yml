@@ -1,8 +1,8 @@
 name: Nha dau tu
 
 on:
-  schedule:
-    - cron: '10 13 * * *'  # 17h10 VN
+  #schedule:
+    #- cron: '10 13 * * *'  # 17h10 VN
   workflow_dispatch:
 
 jobs:
