@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  run_daily:
-    runs-on: ubuntu-latest
 
+  run_price_pipeline:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -21,35 +21,156 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install requests gspread oauth2client
 
-      # 👉 chạy price pipeline trước
       - name: Run price_pipeline.py
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python price_pipeline.py
 
-      # 👉 sau đó chạy nha_dau_tu.py
+
+  run_nha_dau_tu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install requests gspread oauth2client
+
       - name: Run nha_dau_tu.py
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python nha_dau_tu.py
 
-      # 👉 sau đó chạy rate.py
+
+  run_rate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install requests gspread oauth2client
+
       - name: Run rate.py
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python rate.py
 
-      # 👉 sau đó chạy foreign_trade.py
+
+  run_foreign_trade:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install requests gspread oauth2client
+
       - name: Run foreign_trade.py
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python foreign_trade.py
 
-      # 👉 sau đó chạy info_stock.py
+
+  run_info_stock:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install requests gspread oauth2client
+
       - name: Run info_stock.py
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python info_stock.py
-        
-      - name: Done
-        run: echo "Workflow hoàn tất"
+
+
+  report:
+    name: Report
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - run_price_pipeline
+      - run_nha_dau_tu
+      - run_rate
+      - run_foreign_trade
+      - run_info_stock
+
+    steps:
+      - name: Report results
+        run: |
+          echo "========================================"
+          echo "         AUTO RUN DAILY REPORT"
+          echo "========================================"
+
+          echo ""
+          echo "price_pipeline.py : ${{ needs.run_price_pipeline.result }}"
+          echo "nha_dau_tu.py     : ${{ needs.run_nha_dau_tu.result }}"
+          echo "rate.py            : ${{ needs.run_rate.result }}"
+          echo "foreign_trade.py  : ${{ needs.run_foreign_trade.result }}"
+          echo "info_stock.py     : ${{ needs.run_info_stock.result }}"
+
+          echo ""
+          echo "========================================"
+
+          if [ "${{ needs.run_price_pipeline.result }}" != "success" ]; then
+            echo "❌ price_pipeline.py FAILED"
+          else
+            echo "✅ price_pipeline.py OK"
+          fi
+
+          if [ "${{ needs.run_nha_dau_tu.result }}" != "success" ]; then
+            echo "❌ nha_dau_tu.py FAILED"
+          else
+            echo "✅ nha_dau_tu.py OK"
+          fi
+
+          if [ "${{ needs.run_rate.result }}" != "success" ]; then
+            echo "❌ rate.py FAILED"
+          else
+            echo "✅ rate.py OK"
+          fi
+
+          if [ "${{ needs.run_foreign_trade.result }}" != "success" ]; then
+            echo "❌ foreign_trade.py FAILED"
+          else
+            echo "✅ foreign_trade.py OK"
+          fi
+
+          if [ "${{ needs.run_info_stock.result }}" != "success" ]; then
+            echo "❌ info_stock.py FAILED"
+          else
+            echo "✅ info_stock.py OK"
+          fi
+
+          echo "========================================"
