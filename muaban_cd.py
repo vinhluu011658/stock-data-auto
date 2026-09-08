@@ -27,8 +27,10 @@ ws = sh.worksheet(SHEET_NAME)
 # ============================================================
 
 symbols = [
-    # GIỮ NGUYÊN TOÀN BỘ DANH SÁCH symbols CỦA BẠN Ở ĐÂY
-    # Ví dụ:
+    # ========================================================
+    # DÁN TOÀN BỘ DANH SÁCH ~400 MÃ CỦA BẠN VÀO ĐÂY
+    # ========================================================
+
     "AAA",
     "AAM",
     "AAT",
@@ -164,25 +166,40 @@ def get_transaction(symbol):
 
         source = response.json()
 
-        # Tương đương:
-        # Record.ToTable(Source){2}[Value]
+        # ----------------------------------------------------
+        # Tương đương Power Query:
+        #
+        # Record.ToTable(Source)
+        # Value = #"Converted to Table"{2}[Value]
+        # ----------------------------------------------------
+
         values = list(source.values())
 
         if len(values) < 3:
-            print(f"{symbol}: Không tìm thấy dữ liệu giao dịch")
+
+            print(
+                f"{symbol}: Không tìm thấy dữ liệu giao dịch"
+            )
+
             return None
 
         data = values[2]
 
         if not isinstance(data, list):
-            print(f"{symbol}: Dữ liệu không phải dạng list")
+
+            print(
+                f"{symbol}: Dữ liệu không phải dạng list"
+            )
+
             return None
 
         return symbol, data
 
     except Exception as e:
 
-        print(f"{symbol}: Lỗi API - {e}")
+        print(
+            f"{symbol}: Lỗi API - {e}"
+        )
 
         return None
 
@@ -193,9 +210,9 @@ def get_transaction(symbol):
 
 def calculate_symbol(symbol, data):
 
-    # --------------------------------------------------------
-    # Giá trị giao dịch theo từng vùng
-    # --------------------------------------------------------
+    # ========================================================
+    # GIÁ TRỊ MUA / BÁN THEO 4 VÙNG
+    # ========================================================
 
     v1_buy = 0.0
     v1_sell = 0.0
@@ -209,9 +226,10 @@ def calculate_symbol(symbol, data):
     v4_buy = 0.0
     v4_sell = 0.0
 
-    # --------------------------------------------------------
-    # Khối lượng mua / bán
-    # --------------------------------------------------------
+
+    # ========================================================
+    # KHỐI LƯỢNG MUA / BÁN
+    # ========================================================
 
     khoi_luong_mua = 0.0
     khoi_luong_ban = 0.0
@@ -225,18 +243,50 @@ def calculate_symbol(symbol, data):
 
         try:
 
-            price = float(row.get("price", 0) or 0)
+            # ------------------------------------------------
+            # API 24HMoney đang trả giá bị chia 1.000
+            #
+            # Ví dụ:
+            # Giá thực tế = 65.000
+            # API trả       = 65
+            #
+            # Vì vậy nhân lại 1.000
+            # ------------------------------------------------
+
+            price = float(
+                row.get("price", 0) or 0
+            ) * 1000
+
+
+            # ------------------------------------------------
+            # Khối lượng khớp
+            # ------------------------------------------------
 
             match_qtty = float(
                 row.get("match_qtty", 0) or 0
             )
 
+
+            # ------------------------------------------------
+            # Loại giao dịch
+            #
+            # bu = mua chủ động
+            # sd = bán chủ động
+            # ------------------------------------------------
+
             side = str(
                 row.get("side", "")
             ).lower().strip()
 
+
+            # ------------------------------------------------
             # Giá trị lệnh
-            gia_tri_lenh = price * match_qtty
+            # ------------------------------------------------
+
+            gia_tri_lenh = (
+                price * match_qtty
+            )
+
 
             if gia_tri_lenh <= 0:
                 continue
@@ -256,58 +306,94 @@ def calculate_symbol(symbol, data):
 
 
             # =================================================
-            # PHÂN VÙNG GIÁ TRỊ LỆNH
+            # PHÂN LOẠI 4 VÙNG GIÁ TRỊ LỆNH
             # =================================================
+
+            # -------------------------------------------------
+            # V1: < 250 triệu
+            # -------------------------------------------------
 
             if gia_tri_lenh < 250_000_000:
 
                 if side == "bu":
+
                     v1_buy += gia_tri_lenh
 
                 elif side == "sd":
+
                     v1_sell += gia_tri_lenh
 
+
+            # -------------------------------------------------
+            # V2: 250 triệu đến < 500 triệu
+            # -------------------------------------------------
 
             elif gia_tri_lenh < 500_000_000:
 
                 if side == "bu":
+
                     v2_buy += gia_tri_lenh
 
                 elif side == "sd":
+
                     v2_sell += gia_tri_lenh
 
+
+            # -------------------------------------------------
+            # V3: 500 triệu đến 1 tỷ
+            # -------------------------------------------------
 
             elif gia_tri_lenh <= 1_000_000_000:
 
                 if side == "bu":
+
                     v3_buy += gia_tri_lenh
 
                 elif side == "sd":
+
                     v3_sell += gia_tri_lenh
 
+
+            # -------------------------------------------------
+            # V4: > 1 tỷ
+            # -------------------------------------------------
 
             else:
 
                 if side == "bu":
+
                     v4_buy += gia_tri_lenh
 
                 elif side == "sd":
+
                     v4_sell += gia_tri_lenh
 
 
         except Exception:
 
+            # Nếu một dòng lỗi thì bỏ qua dòng đó
             continue
 
 
     # ========================================================
-    # CHÊNH LỆCH TỪNG VÙNG
+    # CHÊNH LỆCH MỖI VÙNG
     # ========================================================
 
-    chenh_v1 = v1_buy - v1_sell
-    chenh_v2 = v2_buy - v2_sell
-    chenh_v3 = v3_buy - v3_sell
-    chenh_v4 = v4_buy - v4_sell
+    chenh_v1 = (
+        v1_buy - v1_sell
+    )
+
+    chenh_v2 = (
+        v2_buy - v2_sell
+    )
+
+    chenh_v3 = (
+        v3_buy - v3_sell
+    )
+
+    chenh_v4 = (
+        v4_buy - v4_sell
+    )
 
 
     # ========================================================
@@ -323,33 +409,41 @@ def calculate_symbol(symbol, data):
 
 
     # ========================================================
-    # TỶ TRỌNG TỪNG VÙNG
+    # TÍNH TỶ TRỌNG V1 - V4
     # ========================================================
 
     if chenh_tong != 0:
 
-        v1_percent = (
-            chenh_v1 / chenh_tong
-        ) * 100
+        v1 = (
+            chenh_v1
+            / chenh_tong
+            * 100
+        )
 
-        v2_percent = (
-            chenh_v2 / chenh_tong
-        ) * 100
+        v2 = (
+            chenh_v2
+            / chenh_tong
+            * 100
+        )
 
-        v3_percent = (
-            chenh_v3 / chenh_tong
-        ) * 100
+        v3 = (
+            chenh_v3
+            / chenh_tong
+            * 100
+        )
 
-        v4_percent = (
-            chenh_v4 / chenh_tong
-        ) * 100
+        v4 = (
+            chenh_v4
+            / chenh_tong
+            * 100
+        )
 
     else:
 
-        v1_percent = 0
-        v2_percent = 0
-        v3_percent = 0
-        v4_percent = 0
+        v1 = 0
+        v2 = 0
+        v3 = 0
+        v4 = 0
 
 
     # ========================================================
@@ -361,11 +455,17 @@ def calculate_symbol(symbol, data):
         + khoi_luong_ban
     )
 
+
     if tong_khoi_luong != 0:
 
         ty_le_chenh_khoi_luong = (
-            (khoi_luong_mua - khoi_luong_ban)
+
+            (
+                khoi_luong_mua
+                - khoi_luong_ban
+            )
             / tong_khoi_luong
+
         ) * 100
 
     else:
@@ -378,19 +478,31 @@ def calculate_symbol(symbol, data):
     # ========================================================
 
     return [
+
         symbol,
-        round(v1_percent, 4),
-        round(v2_percent, 4),
-        round(v3_percent, 4),
-        round(v4_percent, 4),
+
+        round(v1, 4),
+
+        round(v2, 4),
+
+        round(v3, 4),
+
+        round(v4, 4),
+
         round(khoi_luong_mua, 2),
+
         round(khoi_luong_ban, 2),
-        round(ty_le_chenh_khoi_luong, 4),
+
+        round(
+            ty_le_chenh_khoi_luong,
+            4
+        ),
+
     ]
 
 
 # ============================================================
-# 6. LẤY DỮ LIỆU CHO TOÀN BỘ THỊ TRƯỜNG
+# 6. LẤY DỮ LIỆU TOÀN BỘ THỊ TRƯỜNG
 # ============================================================
 
 all_data = {}
@@ -407,52 +519,74 @@ while remaining:
         f"===== {len(remaining)} mã ====="
     )
 
+
     temp_data = []
 
-    with ThreadPoolExecutor(max_workers=20) as executor:
+
+    with ThreadPoolExecutor(
+        max_workers=20
+    ) as executor:
 
         futures = {
+
             executor.submit(
                 get_transaction,
                 symbol
             ): symbol
+
             for symbol in remaining
+
         }
+
 
         for future in as_completed(futures):
 
             symbol = futures[future]
 
+
             try:
 
                 result = future.result()
 
+
                 if result is not None:
 
-                    all_data[symbol] = result[1]
+                    all_data[
+                        symbol
+                    ] = result[1]
 
-                    temp_data.append(symbol)
+
+                    temp_data.append(
+                        symbol
+                    )
+
 
                     print(
                         f"{symbol}: OK "
                         f"({len(result[1])} giao dịch)"
                     )
 
+
             except Exception as e:
 
                 print(
-                    f"{symbol}: lỗi xử lý - {e}"
+                    f"{symbol}: "
+                    f"lỗi xử lý - {e}"
                 )
 
 
-    # --------------------------------------------------------
-    # Các mã chưa thành công
-    # --------------------------------------------------------
+    # ========================================================
+    # CẬP NHẬT DANH SÁCH MÃ CHƯA THÀNH CÔNG
+    # ========================================================
 
     remaining = [
+
         symbol
+
         for symbol in remaining
+
         if symbol not in temp_data
+
     ]
 
 
@@ -465,9 +599,14 @@ while remaining:
     )
 
 
+    # ========================================================
+    # RETRY
+    # ========================================================
+
     if remaining:
 
         round_num += 1
+
 
         if round_num <= 3:
 
@@ -488,7 +627,7 @@ while remaining:
 
 
 # ============================================================
-# 7. TÍNH TOÁN KẾT QUẢ
+# 7. TÍNH TOÁN KẾT QUẢ CHO TOÀN BỘ MÃ
 # ============================================================
 
 results = []
@@ -504,19 +643,28 @@ for symbol in symbols:
 
         continue
 
+
     try:
 
         result = calculate_symbol(
+
             symbol,
+
             all_data[symbol]
+
         )
 
-        results.append(result)
+
+        results.append(
+            result
+        )
+
 
     except Exception as e:
 
         print(
-            f"{symbol}: lỗi tính toán - {e}"
+            f"{symbol}: "
+            f"lỗi tính toán - {e}"
         )
 
 
@@ -527,14 +675,23 @@ for symbol in symbols:
 output = [
 
     [
+
         "ma_cp",
-        "V1_%",
-        "V2_%",
-        "V3_%",
-        "V4_%",
+
+        "V1",
+
+        "V2",
+
+        "V3",
+
+        "V4",
+
         "khoi_luong_mua",
+
         "khoi_luong_ban",
+
         "ty_le_chenh_khoi_luong",
+
     ]
 
 ]
@@ -544,7 +701,9 @@ output = [
 # 9. THÊM KẾT QUẢ
 # ============================================================
 
-output.extend(results)
+output.extend(
+    results
+)
 
 
 # ============================================================
@@ -570,8 +729,16 @@ ws.update(
 # ============================================================
 
 print(
-    f"\nHoàn tất! "
-    f"Đã ghi {len(results)} mã vào Google Sheets."
+    "\n========================================"
+)
+
+print(
+    "HOÀN TẤT!"
+)
+
+print(
+    f"Đã ghi {len(results)} mã "
+    f"vào Google Sheets."
 )
 
 print(
@@ -583,5 +750,10 @@ print(
 )
 
 print(
-    f"Số mã lỗi: {len(symbols) - len(results)}"
+    f"Số mã lỗi: "
+    f"{len(symbols) - len(results)}"
+)
+
+print(
+    "========================================"
 )
