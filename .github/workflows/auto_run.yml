@@ -115,6 +115,36 @@ jobs:
         run: python info_stock.py
 
 
+  # =========================================================
+  # CHẠY MUABAN_CD.PY
+  # =========================================================
+
+  run_muaban_cd:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install requests gspread oauth2client
+
+      - name: Run muaban_cd.py
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python muaban_cd.py
+
+
+  # =========================================================
+  # REPORT
+  # =========================================================
+
   report:
     name: Report
     runs-on: ubuntu-latest
@@ -125,6 +155,7 @@ jobs:
       - run_rate
       - run_foreign_trade
       - run_info_stock
+      - run_muaban_cd
 
     steps:
       - name: Report results
@@ -139,6 +170,7 @@ jobs:
           echo "rate.py            : ${{ needs.run_rate.result }}"
           echo "foreign_trade.py  : ${{ needs.run_foreign_trade.result }}"
           echo "info_stock.py     : ${{ needs.run_info_stock.result }}"
+          echo "muaban_cd.py      : ${{ needs.run_muaban_cd.result }}"
 
           echo ""
           echo "========================================"
@@ -171,6 +203,12 @@ jobs:
             echo "❌ info_stock.py FAILED"
           else
             echo "✅ info_stock.py OK"
+          fi
+
+          if [ "${{ needs.run_muaban_cd.result }}" != "success" ]; then
+            echo "❌ muaban_cd.py FAILED"
+          else
+            echo "✅ muaban_cd.py OK"
           fi
 
           echo "========================================"
