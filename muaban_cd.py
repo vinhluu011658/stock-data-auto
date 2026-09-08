@@ -1,4 +1,3 @@
-```python
 import os
 import time
 import json
@@ -712,4 +711,3 @@ print(
 print(
     "========================================"
 )
-```
