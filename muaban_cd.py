@@ -1,8 +1,10 @@
+```python
 import os
 import time
 import json
 import requests
 import gspread
+from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
@@ -24,7 +26,25 @@ ws = sh.worksheet(SHEET_NAME)
 
 
 # ============================================================
-# 2. DANH SÁCH MÃ CỔ PHIẾU
+# 2. NGÀY GIAO DỊCH
+#
+# Lấy ngày hệ thống theo giờ Việt Nam (UTC+7)
+# Định dạng: yyyy-mm-dd
+# ============================================================
+
+vn_timezone = timezone(timedelta(hours=7))
+
+ngay_gd = datetime.now(
+    vn_timezone
+).strftime("%Y-%m-%d")
+
+print(
+    f"Ngày giao dịch: {ngay_gd}"
+)
+
+
+# ============================================================
+# 3. DANH SÁCH MÃ CỔ PHIẾU
 # ============================================================
 
 symbols = """AAA AAM AAT ABR ABS ABT ACB ACC ACG ACL ADG ADP ADS AFX AGG AGR ANT ANV APG APH ASG ASM ASP AST
@@ -54,7 +74,7 @@ YBM YEG
 
 
 # ============================================================
-# 3. SESSION + HEADER
+# 4. SESSION + HEADER
 # ============================================================
 
 session = requests.Session()
@@ -66,7 +86,7 @@ headers = {
 
 
 # ============================================================
-# 4. HÀM LẤY DỮ LIỆU GIAO DỊCH
+# 5. HÀM LẤY DỮ LIỆU GIAO DỊCH
 # ============================================================
 
 def get_transaction(symbol):
@@ -128,7 +148,7 @@ def get_transaction(symbol):
 
 
 # ============================================================
-# 5. TÍNH TOÁN CHO TỪNG MÃ
+# 6. TÍNH TOÁN CHO TỪNG MÃ
 # ============================================================
 
 def calculate_symbol(symbol, data):
@@ -421,7 +441,7 @@ def calculate_symbol(symbol, data):
 
 
 # ============================================================
-# 6. LẤY DATA TOÀN BỘ THỊ TRƯỜNG
+# 7. LẤY DATA TOÀN BỘ THỊ TRƯỜNG
 # ============================================================
 
 all_data = {}
@@ -546,7 +566,7 @@ while remaining:
 
 
 # ============================================================
-# 7. TÍNH TOÁN KẾT QUẢ
+# 8. TÍNH TOÁN KẾT QUẢ
 # ============================================================
 
 results = []
@@ -588,12 +608,16 @@ for symbol in symbols:
 
 
 # ============================================================
-# 8. HEADER GOOGLE SHEETS
+# 9. HEADER GOOGLE SHEETS
+#
+# ngay_gd được đặt làm cột đầu tiên
 # ============================================================
 
 output = [
 
     [
+
+        "ngay_gd",
 
         "ma_cp",
 
@@ -617,23 +641,31 @@ output = [
 
 
 # ============================================================
-# 9. THÊM KẾT QUẢ
+# 10. THÊM KẾT QUẢ
+#
+# Thêm ngay_gd vào đầu mỗi dòng
 # ============================================================
 
-output.extend(
-    results
-)
+for result in results:
+
+    output.append([
+
+        ngay_gd,
+
+        *result
+
+    ])
 
 
 # ============================================================
-# 10. XÓA DATA CŨ
+# 11. XÓA DATA CŨ
 # ============================================================
 
 ws.clear()
 
 
 # ============================================================
-# 11. GHI DATA MỚI
+# 12. GHI DATA MỚI
 # ============================================================
 
 ws.update(
@@ -644,7 +676,7 @@ ws.update(
 
 
 # ============================================================
-# 12. HOÀN TẤT
+# 13. HOÀN TẤT
 # ============================================================
 
 print(
@@ -653,6 +685,10 @@ print(
 
 print(
     "HOÀN TẤT!"
+)
+
+print(
+    f"Ngày giao dịch: {ngay_gd}"
 )
 
 print(
@@ -676,3 +712,4 @@ print(
 print(
     "========================================"
 )
+```
