@@ -26,16 +26,17 @@ ws = sh.worksheet(SHEET_NAME)
 
 # ============================================================
 # 2. NGÀY GIAO DỊCH
-#
+# ============================================================
+
 # Không dùng ngày hệ thống.
 # Ngày giao dịch sẽ được lấy riêng theo từng mã cổ phiếu
 # từ API trading-history.
-# ============================================================
 
 TRADING_HISTORY_URL = (
     "https://api-finance-t19.24hmoney.vn/"
     "v2/ios/stock/trading-history"
 )
+
 
 def get_trading_date(symbol):
     """
@@ -243,7 +244,7 @@ def get_transaction(symbol):
 def calculate_symbol(symbol, data):
 
     # ========================================================
-    # KHỐI LƯỢNG MUA / BÁN THEO 4 VÙNG
+    # GIÁ TRỊ MUA / BÁN THEO 4 VÙNG
     # ========================================================
 
     v1_buy = 0.0
@@ -260,11 +261,11 @@ def calculate_symbol(symbol, data):
 
 
     # ========================================================
-    # TỔNG KHỐI LƯỢNG MUA / BÁN
+    # TỔNG GIÁ TRỊ MUA / BÁN
     # ========================================================
 
-    khoi_luong_mua = 0.0
-    khoi_luong_ban = 0.0
+    gia_tri_mua = 0.0
+    gia_tri_ban = 0.0
 
 
     # ========================================================
@@ -306,42 +307,37 @@ def calculate_symbol(symbol, data):
 
 
             # ------------------------------------------------
-            # GIÁ TRỊ LỆNH
+            # GIÁ TRỊ KHỚP LỆNH
             #
-            # CHỈ DÙNG ĐỂ CHIA VÙNG
+            # Giá trị = Giá × Khối lượng khớp
             # ------------------------------------------------
 
             gia_tri_lenh = (
                 price * match_qtty
             )
 
-
             if gia_tri_lenh <= 0:
                 continue
-
 
             if match_qtty <= 0:
                 continue
 
 
             # =================================================
-            # TỔNG KHỐI LƯỢNG TOÀN BỘ
+            # TỔNG GIÁ TRỊ TOÀN BỘ
             # =================================================
 
             if side == "bu":
 
-                khoi_luong_mua += match_qtty
+                gia_tri_mua += gia_tri_lenh
 
             elif side == "sd":
 
-                khoi_luong_ban += match_qtty
+                gia_tri_ban += gia_tri_lenh
 
 
             # =================================================
-            # PHÂN VÙNG
-            #
-            # LƯU Ý:
-            # gia_tri_lenh chỉ dùng để xác định V1-V4
+            # PHÂN VÙNG THEO GIÁ TRỊ LỆNH
             # =================================================
 
             # -------------------------------------------------
@@ -352,11 +348,11 @@ def calculate_symbol(symbol, data):
 
                 if side == "bu":
 
-                    v1_buy += match_qtty
+                    v1_buy += gia_tri_lenh
 
                 elif side == "sd":
 
-                    v1_sell += match_qtty
+                    v1_sell += gia_tri_lenh
 
 
             # -------------------------------------------------
@@ -367,11 +363,11 @@ def calculate_symbol(symbol, data):
 
                 if side == "bu":
 
-                    v2_buy += match_qtty
+                    v2_buy += gia_tri_lenh
 
                 elif side == "sd":
 
-                    v2_sell += match_qtty
+                    v2_sell += gia_tri_lenh
 
 
             # -------------------------------------------------
@@ -382,11 +378,11 @@ def calculate_symbol(symbol, data):
 
                 if side == "bu":
 
-                    v3_buy += match_qtty
+                    v3_buy += gia_tri_lenh
 
                 elif side == "sd":
 
-                    v3_sell += match_qtty
+                    v3_sell += gia_tri_lenh
 
 
             # -------------------------------------------------
@@ -397,11 +393,11 @@ def calculate_symbol(symbol, data):
 
                 if side == "bu":
 
-                    v4_buy += match_qtty
+                    v4_buy += gia_tri_lenh
 
                 elif side == "sd":
 
-                    v4_sell += match_qtty
+                    v4_sell += gia_tri_lenh
 
 
         except Exception:
@@ -411,9 +407,7 @@ def calculate_symbol(symbol, data):
 
 
     # ========================================================
-    # CHÊNH LỆCH KHỐI LƯỢNG TỪNG VÙNG
-    #
-    # HOÀN TOÀN DÙNG KHỐI LƯỢNG
+    # CHÊNH LỆCH GIÁ TRỊ TỪNG VÙNG
     # ========================================================
 
     chenh_v1 = (
@@ -434,60 +428,60 @@ def calculate_symbol(symbol, data):
 
 
     # ========================================================
-    # TỔNG KHỐI LƯỢNG MUA + BÁN
+    # TỔNG GIÁ TRỊ MUA + BÁN
     # ========================================================
 
-    tong_khoi_luong = (
-        khoi_luong_mua
-        + khoi_luong_ban
+    tong_gia_tri = (
+        gia_tri_mua
+        + gia_tri_ban
     )
 
 
     # ========================================================
     # TÍNH V1 - V4
     #
-    # Chênh lệch khối lượng từng vùng
-    # chia cho tổng khối lượng mua + bán
+    # Chênh lệch giá trị từng vùng
+    # chia cho tổng giá trị mua + bán
     # ========================================================
 
-    if tong_khoi_luong != 0:
+    if tong_gia_tri != 0:
 
         v1 = (
             chenh_v1
-            / tong_khoi_luong
+            / tong_gia_tri
             * 100
         )
 
         v2 = (
             chenh_v2
-            / tong_khoi_luong
+            / tong_gia_tri
             * 100
         )
 
         v3 = (
             chenh_v3
-            / tong_khoi_luong
+            / tong_gia_tri
             * 100
         )
 
         v4 = (
             chenh_v4
-            / tong_khoi_luong
+            / tong_gia_tri
             * 100
         )
 
 
         # ====================================================
-        # TỶ LỆ CHÊNH KHỐI LƯỢNG TOÀN BỘ
+        # TỶ LỆ CHÊNH GIÁ TRỊ TOÀN BỘ
         # ====================================================
 
-        ty_le_chenh_khoi_luong = (
+        ty_le_chenh_gia_tri = (
 
             (
-                khoi_luong_mua
-                - khoi_luong_ban
+                gia_tri_mua
+                - gia_tri_ban
             )
-            / tong_khoi_luong
+            / tong_gia_tri
 
         ) * 100
 
@@ -498,11 +492,13 @@ def calculate_symbol(symbol, data):
         v3 = 0
         v4 = 0
 
-        ty_le_chenh_khoi_luong = 0
+        ty_le_chenh_gia_tri = 0
 
 
     # ========================================================
     # KẾT QUẢ CUỐI CÙNG
+    #
+    # GIỮ NGUYÊN 8 CỘT DỮ LIỆU NHƯ CODE CŨ
     # ========================================================
 
     return [
@@ -517,12 +513,12 @@ def calculate_symbol(symbol, data):
 
         round(v4, 4),
 
-        round(khoi_luong_mua, 2),
+        round(gia_tri_mua, 2),
 
-        round(khoi_luong_ban, 2),
+        round(gia_tri_ban, 2),
 
         round(
-            ty_le_chenh_khoi_luong,
+            ty_le_chenh_gia_tri,
             4
         ),
 
@@ -547,7 +543,6 @@ while remaining:
         f"===== {len(remaining)} mã ====="
     )
 
-
     temp_data = []
 
 
@@ -570,7 +565,6 @@ while remaining:
         for future in as_completed(futures):
 
             symbol = futures[future]
-
 
             try:
 
@@ -718,11 +712,11 @@ output = [
 
         "vung_tren_1000",
 
-        "khoi_luong_mua",
+        "gia_tri_mua",
 
-        "khoi_luong_ban",
+        "gia_tri_ban",
 
-        "ty_le_chenh_khoi_luong",
+        "ty_le_chenh_gia_tri",
 
     ]
 
@@ -745,6 +739,7 @@ for result in results:
 
     ngay_gd = get_trading_date(symbol)
 
+
     if ngay_gd is None:
 
         print(
@@ -752,6 +747,7 @@ for result in results:
         )
 
         continue
+
 
     output.append([
 
@@ -795,6 +791,10 @@ print(
 print(
     "Ngày giao dịch: lấy riêng theo từng mã "
     "từ API trading-history."
+)
+
+print(
+    "Đơn vị mua/bán: GIÁ TRỊ KHỚP LỆNH (VNĐ)."
 )
 
 print(
