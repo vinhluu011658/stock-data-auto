@@ -27,19 +27,109 @@ ws = sh.worksheet(SHEET_NAME)
 # ============================================================
 # 2. NGÀY GIAO DỊCH
 #
-# Lấy ngày hệ thống theo giờ Việt Nam (UTC+7)
-# Định dạng: yyyy-mm-dd
+# Không dùng ngày hệ thống.
+# Ngày giao dịch sẽ được lấy riêng theo từng mã cổ phiếu
+# từ API trading-history.
 # ============================================================
 
-vn_timezone = timezone(timedelta(hours=7))
-
-ngay_gd = datetime.now(
-    vn_timezone
-).strftime("%Y-%m-%d")
-
-print(
-    f"Ngày giao dịch: {ngay_gd}"
+TRADING_HISTORY_URL = (
+    "https://api-finance-t19.24hmoney.vn/"
+    "v2/ios/stock/trading-history"
 )
+
+def get_trading_date(symbol):
+    """
+    Lấy trading_date mới nhất theo từng mã cổ phiếu
+    từ API 24HMoney và chuyển sang yyyy-mm-dd.
+    """
+
+    try:
+
+        url = (
+            f"{TRADING_HISTORY_URL}"
+            f"?symbol={symbol}&floor_code=10"
+        )
+
+        response = session.get(
+            url,
+            headers=headers,
+            timeout=30
+        )
+
+        response.raise_for_status()
+
+        source = response.json()
+
+        # --------------------------------------------------------
+        # Tìm tất cả trading_date trong JSON trả về
+        # --------------------------------------------------------
+
+        trading_dates = []
+
+        def collect_trading_dates(obj):
+
+            if isinstance(obj, dict):
+
+                if "trading_date" in obj:
+
+                    value = obj.get("trading_date")
+
+                    try:
+                        trading_dates.append(float(value))
+                    except (TypeError, ValueError):
+                        pass
+
+                for value in obj.values():
+                    collect_trading_dates(value)
+
+            elif isinstance(obj, list):
+
+                for item in obj:
+                    collect_trading_dates(item)
+
+        collect_trading_dates(source)
+
+        if not trading_dates:
+
+            print(
+                f"{symbol}: Không tìm thấy trading_date"
+            )
+
+            return None
+
+        # --------------------------------------------------------
+        # Lấy trading_date mới nhất
+        # --------------------------------------------------------
+
+        latest_timestamp = max(trading_dates)
+
+        # --------------------------------------------------------
+        # Unix timestamp -> yyyy-mm-dd
+        #
+        # API dùng timestamp theo UTC.
+        # Chuyển về giờ Việt Nam trước khi lấy ngày.
+        # --------------------------------------------------------
+
+        vn_timezone = timezone(
+            timedelta(hours=7)
+        )
+
+        ngay_gd = datetime.fromtimestamp(
+            latest_timestamp,
+            tz=timezone.utc
+        ).astimezone(
+            vn_timezone
+        ).strftime("%Y-%m-%d")
+
+        return ngay_gd
+
+    except Exception as e:
+
+        print(
+            f"{symbol}: Lỗi lấy trading_date - {e}"
+        )
+
+        return None
 
 
 # ============================================================
@@ -647,6 +737,22 @@ output = [
 
 for result in results:
 
+    symbol = result[0]
+
+    # --------------------------------------------------------
+    # Lấy ngày giao dịch mới nhất riêng theo từng mã
+    # --------------------------------------------------------
+
+    ngay_gd = get_trading_date(symbol)
+
+    if ngay_gd is None:
+
+        print(
+            f"{symbol}: Không lấy được ngày giao dịch, bỏ qua"
+        )
+
+        continue
+
     output.append([
 
         ngay_gd,
@@ -687,7 +793,8 @@ print(
 )
 
 print(
-    f"Ngày giao dịch: {ngay_gd}"
+    "Ngày giao dịch: lấy riêng theo từng mã "
+    "từ API trading-history."
 )
 
 print(
