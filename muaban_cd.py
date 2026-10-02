@@ -3,6 +3,7 @@ import time
 import json
 import requests
 import gspread
+
 from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -27,10 +28,6 @@ ws = sh.worksheet(SHEET_NAME)
 # ============================================================
 # 2. NGÀY GIAO DỊCH
 # ============================================================
-
-# Không dùng ngày hệ thống.
-# Ngày giao dịch sẽ được lấy riêng theo từng mã cổ phiếu
-# từ API trading-history.
 
 TRADING_HISTORY_URL = (
     "https://api-finance-t19.24hmoney.vn/"
@@ -62,7 +59,7 @@ def get_trading_date(symbol):
         source = response.json()
 
         # --------------------------------------------------------
-        # Tìm tất cả trading_date trong JSON trả về
+        # Tìm tất cả trading_date trong JSON
         # --------------------------------------------------------
 
         trading_dates = []
@@ -76,16 +73,23 @@ def get_trading_date(symbol):
                     value = obj.get("trading_date")
 
                     try:
-                        trading_dates.append(float(value))
+
+                        trading_dates.append(
+                            float(value)
+                        )
+
                     except (TypeError, ValueError):
+
                         pass
 
                 for value in obj.values():
+
                     collect_trading_dates(value)
 
             elif isinstance(obj, list):
 
                 for item in obj:
+
                     collect_trading_dates(item)
 
         collect_trading_dates(source)
@@ -106,9 +110,7 @@ def get_trading_date(symbol):
 
         # --------------------------------------------------------
         # Unix timestamp -> yyyy-mm-dd
-        #
-        # API dùng timestamp theo UTC.
-        # Chuyển về giờ Việt Nam trước khi lấy ngày.
+        # API dùng UTC
         # --------------------------------------------------------
 
         vn_timezone = timezone(
@@ -200,8 +202,7 @@ def get_transaction(symbol):
         source = response.json()
 
         # ----------------------------------------------------
-        # Giữ nguyên concept từ Power Query:
-        #
+        # Giữ nguyên concept từ Power Query
         # Record.ToTable(Source)
         # #"Converted to Table"{2}[Value]
         # ----------------------------------------------------
@@ -238,52 +239,42 @@ def get_transaction(symbol):
 
 
 # ============================================================
-# 6. TÍNH TOÁN CHO TỪNG MÃ
+# 6. TÍNH TOÁN THEO TỪNG MỨC GIÁ
 # ============================================================
 
 def calculate_symbol(symbol, data):
 
     # ========================================================
-    # GIÁ TRỊ MUA / BÁN THEO 4 VÙNG
+    # GOM DỮ LIỆU THEO GIÁ
+    #
+    # Mỗi giá chỉ xuất hiện 1 lần
+    #
+    # price_data[price] =
+    # {
+    #     "gia_tri_mua": ...,
+    #     "gia_tri_ban": ...
+    # }
     # ========================================================
 
-    v1_buy = 0.0
-    v1_sell = 0.0
+    price_data = {}
 
-    v2_buy = 0.0
-    v2_sell = 0.0
-
-    v3_buy = 0.0
-    v3_sell = 0.0
-
-    v4_buy = 0.0
-    v4_sell = 0.0
-
-
-    # ========================================================
-    # TỔNG GIÁ TRỊ MUA / BÁN
-    # ========================================================
-
-    gia_tri_mua = 0.0
-    gia_tri_ban = 0.0
-
-
-    # ========================================================
+    # --------------------------------------------------------
     # DUYỆT TOÀN BỘ GIAO DỊCH
-    # ========================================================
+    # --------------------------------------------------------
 
     for row in data:
 
         try:
 
             # ------------------------------------------------
-            # PRICE API BỊ CHIA 1.000
+            # GIÁ
+            #
+            # API price bị chia 1.000
             # ------------------------------------------------
 
             price = float(
                 row.get("price", 0) or 0
             ) * 1000
-
 
             # ------------------------------------------------
             # KHỐI LƯỢNG KHỚP
@@ -293,6 +284,11 @@ def calculate_symbol(symbol, data):
                 row.get("match_qtty", 0) or 0
             )
 
+            if price <= 0:
+                continue
+
+            if match_qtty <= 0:
+                continue
 
             # ------------------------------------------------
             # SIDE
@@ -305,11 +301,13 @@ def calculate_symbol(symbol, data):
                 row.get("side", "")
             ).lower().strip()
 
+            if side not in ("bu", "sd"):
+                continue
 
             # ------------------------------------------------
             # GIÁ TRỊ KHỚP LỆNH
             #
-            # Giá trị = Giá × Khối lượng khớp
+            # Giá × Khối lượng
             # ------------------------------------------------
 
             gia_tri_lenh = (
@@ -319,210 +317,101 @@ def calculate_symbol(symbol, data):
             if gia_tri_lenh <= 0:
                 continue
 
-            if match_qtty <= 0:
-                continue
+            # ------------------------------------------------
+            # NẾU GIÁ CHƯA CÓ -> TẠO MỚI
+            # ------------------------------------------------
 
+            if price not in price_data:
 
-            # =================================================
-            # TỔNG GIÁ TRỊ TOÀN BỘ
-            # =================================================
+                price_data[price] = {
+
+                    "gia_tri_mua": 0.0,
+
+                    "gia_tri_ban": 0.0
+
+                }
+
+            # ------------------------------------------------
+            # CỘNG DỒN THEO GIÁ
+            # ------------------------------------------------
 
             if side == "bu":
 
-                gia_tri_mua += gia_tri_lenh
+                price_data[price][
+                    "gia_tri_mua"
+                ] += gia_tri_lenh
 
             elif side == "sd":
 
-                gia_tri_ban += gia_tri_lenh
-
-
-            # =================================================
-            # PHÂN VÙNG THEO GIÁ TRỊ LỆNH
-            # =================================================
-
-            # -------------------------------------------------
-            # V1: < 250 triệu
-            # -------------------------------------------------
-
-            if gia_tri_lenh < 250_000_000:
-
-                if side == "bu":
-
-                    v1_buy += gia_tri_lenh
-
-                elif side == "sd":
-
-                    v1_sell += gia_tri_lenh
-
-
-            # -------------------------------------------------
-            # V2: 250 triệu đến < 500 triệu
-            # -------------------------------------------------
-
-            elif gia_tri_lenh < 500_000_000:
-
-                if side == "bu":
-
-                    v2_buy += gia_tri_lenh
-
-                elif side == "sd":
-
-                    v2_sell += gia_tri_lenh
-
-
-            # -------------------------------------------------
-            # V3: 500 triệu đến 1 tỷ
-            # -------------------------------------------------
-
-            elif gia_tri_lenh <= 1_000_000_000:
-
-                if side == "bu":
-
-                    v3_buy += gia_tri_lenh
-
-                elif side == "sd":
-
-                    v3_sell += gia_tri_lenh
-
-
-            # -------------------------------------------------
-            # V4: > 1 tỷ
-            # -------------------------------------------------
-
-            else:
-
-                if side == "bu":
-
-                    v4_buy += gia_tri_lenh
-
-                elif side == "sd":
-
-                    v4_sell += gia_tri_lenh
-
+                price_data[price][
+                    "gia_tri_ban"
+                ] += gia_tri_lenh
 
         except Exception:
 
-            # Nếu một giao dịch lỗi thì bỏ qua
+            # Giao dịch lỗi thì bỏ qua
             continue
 
 
     # ========================================================
-    # CHÊNH LỆCH GIÁ TRỊ TỪNG VÙNG
+    # TẠO KẾT QUẢ
     # ========================================================
 
-    chenh_v1 = (
-        v1_buy - v1_sell
-    )
+    results = []
 
-    chenh_v2 = (
-        v2_buy - v2_sell
-    )
+    for price, values in price_data.items():
 
-    chenh_v3 = (
-        v3_buy - v3_sell
-    )
+        gia_tri_mua = values[
+            "gia_tri_mua"
+        ]
 
-    chenh_v4 = (
-        v4_buy - v4_sell
-    )
+        gia_tri_ban = values[
+            "gia_tri_ban"
+        ]
 
+        # ----------------------------------------------------
+        # GIÁ TRỊ CHỦ ĐỘNG
+        #
+        # Mua chủ động - Bán chủ động
+        # ----------------------------------------------------
 
-    # ========================================================
-    # TỔNG GIÁ TRỊ MUA + BÁN
-    # ========================================================
-
-    tong_gia_tri = (
-        gia_tri_mua
-        + gia_tri_ban
-    )
-
-
-    # ========================================================
-    # TÍNH V1 - V4
-    #
-    # Chênh lệch giá trị từng vùng
-    # chia cho tổng giá trị mua + bán
-    # ========================================================
-
-    if tong_gia_tri != 0:
-
-        v1 = (
-            chenh_v1
-            / tong_gia_tri
-            * 100
+        gia_tri_chu_dong = (
+            gia_tri_mua
+            - gia_tri_ban
         )
 
-        v2 = (
-            chenh_v2
-            / tong_gia_tri
-            * 100
-        )
+        results.append([
 
-        v3 = (
-            chenh_v3
-            / tong_gia_tri
-            * 100
-        )
+            symbol,
 
-        v4 = (
-            chenh_v4
-            / tong_gia_tri
-            * 100
-        )
+            round(price, 2),
 
+            round(
+                gia_tri_mua,
+                2
+            ),
 
-        # ====================================================
-        # TỶ LỆ CHÊNH GIÁ TRỊ TOÀN BỘ
-        # ====================================================
+            round(
+                gia_tri_ban,
+                2
+            ),
 
-        ty_le_chenh_gia_tri = (
-
-            (
-                gia_tri_mua
-                - gia_tri_ban
+            round(
+                gia_tri_chu_dong,
+                2
             )
-            / tong_gia_tri
 
-        ) * 100
+        ])
 
-    else:
+    # --------------------------------------------------------
+    # SẮP XẾP THEO GIÁ TĂNG DẦN
+    # --------------------------------------------------------
 
-        v1 = 0
-        v2 = 0
-        v3 = 0
-        v4 = 0
+    results.sort(
+        key=lambda x: x[1]
+    )
 
-        ty_le_chenh_gia_tri = 0
-
-
-    # ========================================================
-    # KẾT QUẢ CUỐI CÙNG
-    #
-    # GIỮ NGUYÊN 8 CỘT DỮ LIỆU NHƯ CODE CŨ
-    # ========================================================
-
-    return [
-
-        symbol,
-
-        round(v1, 4),
-
-        round(v2, 4),
-
-        round(v3, 4),
-
-        round(v4, 4),
-
-        round(gia_tri_mua, 2),
-
-        round(gia_tri_ban, 2),
-
-        round(
-            ty_le_chenh_gia_tri,
-            4
-        ),
-
-    ]
+    return results
 
 
 # ============================================================
@@ -545,7 +434,6 @@ while remaining:
 
     temp_data = []
 
-
     with ThreadPoolExecutor(
         max_workers=20
     ) as executor:
@@ -561,7 +449,6 @@ while remaining:
 
         }
 
-
         for future in as_completed(futures):
 
             symbol = futures[future]
@@ -570,24 +457,20 @@ while remaining:
 
                 result = future.result()
 
-
                 if result is not None:
 
                     all_data[
                         symbol
                     ] = result[1]
 
-
                     temp_data.append(
                         symbol
                     )
-
 
                     print(
                         f"{symbol}: OK "
                         f"({len(result[1])} giao dịch)"
                     )
-
 
             except Exception as e:
 
@@ -611,7 +494,6 @@ while remaining:
 
     ]
 
-
     print(
         f"Thành công: {len(temp_data)}"
     )
@@ -628,7 +510,6 @@ while remaining:
     if remaining:
 
         round_num += 1
-
 
         if round_num <= 3:
 
@@ -665,10 +546,9 @@ for symbol in symbols:
 
         continue
 
-
     try:
 
-        result = calculate_symbol(
+        symbol_results = calculate_symbol(
 
             symbol,
 
@@ -676,11 +556,9 @@ for symbol in symbols:
 
         )
 
-
-        results.append(
-            result
+        results.extend(
+            symbol_results
         )
-
 
     except Exception as e:
 
@@ -692,8 +570,6 @@ for symbol in symbols:
 
 # ============================================================
 # 9. HEADER GOOGLE SHEETS
-#
-# ngay_gd được đặt làm cột đầu tiên
 # ============================================================
 
 output = [
@@ -704,19 +580,13 @@ output = [
 
         "ma_cp",
 
-        "vung_0_250",
-
-        "vung_250_500",
-
-        "vung_500_1000",
-
-        "vung_tren_1000",
+        "gia_khop_lenh",
 
         "gia_tri_mua",
 
         "gia_tri_ban",
 
-        "ty_le_chenh_gia_tri",
+        "gia_tri_chu_dong"
 
     ]
 
@@ -724,9 +594,14 @@ output = [
 
 
 # ============================================================
-# 10. THÊM KẾT QUẢ
-#
-# Thêm ngay_gd vào đầu mỗi dòng
+# 10. CACHE NGÀY GIAO DỊCH
+# ============================================================
+
+trading_dates = {}
+
+
+# ============================================================
+# 11. THÊM KẾT QUẢ VÀO OUTPUT
 # ============================================================
 
 for result in results:
@@ -734,20 +609,25 @@ for result in results:
     symbol = result[0]
 
     # --------------------------------------------------------
-    # Lấy ngày giao dịch mới nhất riêng theo từng mã
+    # Chỉ gọi API trading-date 1 lần / mã
     # --------------------------------------------------------
 
-    ngay_gd = get_trading_date(symbol)
+    if symbol not in trading_dates:
 
+        trading_dates[symbol] = (
+            get_trading_date(symbol)
+        )
+
+    ngay_gd = trading_dates[symbol]
 
     if ngay_gd is None:
 
         print(
-            f"{symbol}: Không lấy được ngày giao dịch, bỏ qua"
+            f"{symbol}: "
+            f"Không lấy được ngày giao dịch, bỏ qua"
         )
 
         continue
-
 
     output.append([
 
@@ -759,14 +639,14 @@ for result in results:
 
 
 # ============================================================
-# 11. XÓA DATA CŨ
+# 12. XÓA DATA CŨ
 # ============================================================
 
 ws.clear()
 
 
 # ============================================================
-# 12. GHI DATA MỚI
+# 13. GHI DATA MỚI
 # ============================================================
 
 ws.update(
@@ -777,7 +657,7 @@ ws.update(
 
 
 # ============================================================
-# 13. HOÀN TẤT
+# 14. HOÀN TẤT
 # ============================================================
 
 print(
@@ -789,17 +669,25 @@ print(
 )
 
 print(
-    "Ngày giao dịch: lấy riêng theo từng mã "
-    "từ API trading-history."
+    "Concept: GOM GIAO DỊCH THEO GIÁ"
 )
 
 print(
-    "Đơn vị mua/bán: GIÁ TRỊ KHỚP LỆNH (VNĐ)."
+    "Mua chủ động = bu"
 )
 
 print(
-    f"Đã ghi {len(results)} mã "
-    f"vào Google Sheets."
+    "Bán chủ động = sd"
+)
+
+print(
+    "Giá trị chủ động = "
+    "Giá trị mua - Giá trị bán"
+)
+
+print(
+    f"Đã ghi {len(results)} dòng giá "
+    "vào Google Sheets."
 )
 
 print(
@@ -807,12 +695,12 @@ print(
 )
 
 print(
-    f"Số mã thành công: {len(results)}"
+    f"Số mã thành công: {len(all_data)}"
 )
 
 print(
     f"Số mã lỗi: "
-    f"{len(symbols) - len(results)}"
+    f"{len(symbols) - len(all_data)}"
 )
 
 print(
